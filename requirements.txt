@@ -10,3 +10,5 @@ pydantic-settings
 email-validator
 typing
 PyJWT
+python-jose[cryptography] 
+python-multipart

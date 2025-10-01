@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Path
 from sqlalchemy.orm import Session
 from database import get_db
 import models, schemas
-from utils.security import get_password_hash
+from utils.security import get_password_hash, get_current_user
 
 router = APIRouter()
 
@@ -62,3 +62,8 @@ def delete_user(user_id: int, db: Session = Depends(get_db)):
     db.delete(db_user)
     db.commit()
     return {"detail": "Usuário excluído."}
+
+
+@router.get("/me", response_model=schemas.UserOut)
+def read_me(current_user: models.User = Depends(get_current_user)):
+    return current_user
