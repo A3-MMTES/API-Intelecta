@@ -1,5 +1,6 @@
 from pydantic import BaseModel, EmailStr
 from enum import Enum
+from typing import Optional
 
 class RoleEnum(str, Enum):
     admin = "admin"
@@ -22,7 +23,13 @@ class UserOut(UserBase):
     class Config:
         orm_mode = True
 
+
+class UserUpdate(BaseModel):
+    name: Optional[str] = None
+    email: Optional[str] = None
+    role: Optional[RoleEnum] = None
 # UserBase: campos comuns (nome, email, role).
 # UserCreate: herda do UserBase + adiciona password (entrada de cadastro).
+# UserUpdate: schema para atualização de usuários, com campos opcionais.
 # UserOut: herda do UserBase + adiciona id, school_id e is_active (saída na resposta).
 # orm_mode = True: diz pro Pydantic que pode converter um objeto SQLAlchemy (User) em JSON direto.

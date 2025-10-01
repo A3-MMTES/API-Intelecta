@@ -34,8 +34,8 @@ def create_users(user: schemas.UserCreate, db: Session = Depends(get_db)):
 
 @router.put("/{user_id}",response_model = schemas.UserOut)
 def update_user(
+    user_data: schemas.UserUpdate,
     user_id: int = Path(..., description = "ID do usuário que será atualizado"),
-    user_data: schemas.UserCreate = Depends(),
     db: Session = Depends(get_db)
     ):
 
@@ -45,9 +45,9 @@ def update_user(
         raise HTTPException(status_code = 404, detail="Usuário não encontrado") 
     
     # atualização dos dados (não altera a senha)
-    db_user.name = user_data.name
-    db_user.email = user_data.email
-    db_user.role = user_data.role
+    update_data = user_data.dict(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(db_user, key, value)
 
     db.commit()
     db.refresh(db_user)

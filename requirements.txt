@@ -3,8 +3,10 @@ uvicorn==0.37.0
 requests==2.32.5
 SQLAlchemy
 pydantic
-passlib
-bcrypt
+passlib==1.7.4
+bcrypt==3.2.0
 python-multipart
 pydantic-settings
 email-validator
+typing
+PyJWT

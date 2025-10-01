@@ -5,9 +5,9 @@ import enum
 
 # Enum serve pra travar as opções de cargos (roles), então não vai divergir dos 3 possíveis 
 class RoleEnum(str, enum.Enum):
-    admin = "admin",
-    student = "student",
-    techer = "teacher"
+    admin = "admin"
+    student = "student"
+    teacher = "teacher"
 
 class School(Base):
     __tablename__ = "schools" 
