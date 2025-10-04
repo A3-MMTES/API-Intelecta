@@ -82,7 +82,14 @@ def update_user(
     if not user:
         raise HTTPException(status_code=404, detail="Usuário não encontrado")
 
-    for key, value in update_data.dict(exclude_unset=True).items():
+    # for key, value in update_data.dict(exclude_unset=True).items():
+    update_dict = update_data.dict(exclude_unset=True)
+
+    if "password" in update_dict and update_dict["password"]:
+        user.hashed_password = get_password_hash(update_dict["password"])
+        del update_dict["password"]
+    
+    for key, value in update_dict.items():
         setattr(user, key, value)
 
     db.commit()

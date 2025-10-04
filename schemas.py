@@ -28,3 +28,4 @@ class UserUpdate(BaseModel):
     name: Optional[str] = None
     email: Optional[str] = None
     role: Optional[RoleEnum] = None
+    password: Optional[str] = None
