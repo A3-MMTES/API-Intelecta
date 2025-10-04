@@ -1,69 +1,90 @@
-from fastapi import APIRouter, Depends, HTTPException, Path
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from database import get_db
 import models, schemas
 from utils.security import get_password_hash, get_current_user
+from utils.roles import require_role 
 
 router = APIRouter()
 
-# Listar usuários
-@router.get("/", response_model = list[schemas.UserOut])
-def list_users(db: Session = Depends(get_db)):
+# Listar usuários (admin)
+@router.get("/", response_model=list[schemas.UserOut])
+def list_users(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_role(["admin"]))
+):
     return db.query(models.User).all()
 
-#Criar usuários 
-@router.post("/", response_model = schemas.UserOut) 
-def create_users(user: schemas.UserCreate, db: Session = Depends(get_db)):
-    # Verifica se o email já foi usado
+# Criar usuários (admin)
+@router.post("/", response_model=schemas.UserOut) 
+def create_user(
+    user: schemas.UserCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_role(["admin"]))
+):
     db_user = db.query(models.User).filter(models.User.email == user.email).first()
     if db_user:
-        raise HTTPException(status_code=400, detail = "Este email já foi cadastrado")
-
-    hashed_pw = get_password_hash(user.password)
-    new_user = models.User(
-        name = user.name,
-        email = user.email,
-        hashed_password = hashed_pw,
-        role = user.role,
-        school_id = 1 #settado como 1 somente pra testes, quando tiver com mais de uma opção de escola é só mudar pro school id
-    )
+        raise HTTPException(status_code=400, detail="Email já registrado")
+    
+    hashed_password = get_password_hash(user.password)
+    # school_id está fixo em 1
+    new_user = models.User(name=user.name, email=user.email, hashed_password=hashed_password, role=user.role, school_id=1)
+    
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
     return new_user
 
-@router.put("/{user_id}",response_model = schemas.UserOut)
-def update_user(
-    user_data: schemas.UserUpdate,
-    user_id: int = Path(..., description = "ID do usuário que será atualizado"),
-    db: Session = Depends(get_db)
-    ):
+# Deletar usuário (admin)
+@router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_role(["admin"]))
+):
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
 
-    db_user = db.query(models.User).filter(models.User.id == user_id).first()
-    # checa se o usuário está no db
-    if not db_user:
-        raise HTTPException(status_code = 404, detail="Usuário não encontrado") 
-    
-    # atualização dos dados (não altera a senha)
-    update_data = user_data.dict(exclude_unset=True)
-    for key, value in update_data.items():
-        setattr(db_user, key, value)
-
+    db.delete(user)
     db.commit()
-    db.refresh(db_user)
-    return db_user
+    return None
 
-@router.delete("/{user_id}")
-def delete_user(user_id: int, db: Session = Depends(get_db)):
-    db_user = db.query(models.User).filter(models.User.id == user_id).first()
-    if not db_user:
-        raise HTTPException(status_code = 404, detail = "usuário não encontrado")
-
-    db.delete(db_user)
-    db.commit()
-    return {"detail": "Usuário excluído."}
-
-
+# Ver qual usuário estou logado (geral)
 @router.get("/me", response_model=schemas.UserOut)
 def read_me(current_user: models.User = Depends(get_current_user)):
     return current_user
+
+# Buscar por ID (admin)
+@router.get("/{user_id}", response_model=schemas.UserOut)
+def get_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_role(["admin"]))
+):
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
+    return user
+
+# Atualizar usuário (admin ou o próprio)
+@router.put("/{user_id}", response_model=schemas.UserOut)
+def update_user(
+    user_id: int,
+    update_data: schemas.UserUpdate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    if current_user.role != "admin" and current_user.id != user_id:
+        raise HTTPException(status_code=403, detail="Acesso negado")
+
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
+
+    for key, value in update_data.dict(exclude_unset=True).items():
+        setattr(user, key, value)
+
+    db.commit()
+    db.refresh(user)
+    return user
