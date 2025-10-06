@@ -75,7 +75,7 @@ def update_user(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    if current_user.role != "admin" and current_user.id != user_id:
+    if current_user.role != models.RoleEnum.admin and current_user.id != user_id:
         raise HTTPException(status_code=403, detail="Acesso negado")
 
     user = db.query(models.User).filter(models.User.id == user_id).first()

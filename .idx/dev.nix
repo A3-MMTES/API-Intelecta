@@ -8,6 +8,7 @@
     # pkgs.go
     pkgs.python311
     pkgs.python311Packages.pip
+    pkgs.sqlite # Adicionado para interagir com o banco de dados
     # pkgs.nodejs_20
     # pkgs.nodePackages.nodemon
   ];
@@ -18,6 +19,7 @@
     extensions = [
       # "vscodevim.vim"
       "google.gemini-cli-vscode-ide-companion"
+      "ms-azuretools.vscode-sqlite" # Adicionado para visualizar o .db
     ];
     # Enable previews
     previews = {

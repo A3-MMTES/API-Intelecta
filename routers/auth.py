@@ -37,7 +37,7 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    token_data = {"sub": str(user.id), "role": user.role.value}
+    token_data = {"sub": str(user.id), "role": user.role}
     access_token = create_access_token(data=token_data)
 
     return {"access_token": access_token, "token_type": "bearer"}

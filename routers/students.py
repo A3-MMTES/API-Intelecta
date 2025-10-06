@@ -45,7 +45,7 @@ def get_student(
         raise HTTPException(status_code = 404, detail = "Aluno não encontrado")
 
     # se o user não for admin, só poderá ver o próprio perfil 
-    if current_user.role != "admin" and current_user.id != student.user_id:
+    if current_user.role != models.RoleEnum.admin and current_user.id != student.user_id:
         raise HTTPException(status_code = 403, detail = "Acesso negado")
 
     return student
@@ -78,7 +78,7 @@ def delete_student(
 ):
     student = db.query(models.Student).filter(models.Student.id == student_id).first()
     if not student:
-        return HTTPexception(status_code = 404, detail = "Aluno não encontrado")
+        raise HTTPException(status_code = 404, detail = "Aluno não encontrado")
 
     db.delete(student)
     db.commit()

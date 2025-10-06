@@ -1,55 +1,66 @@
-from pydantic import BaseModel, EmailStr
-from enum import Enum
+from pydantic import BaseModel
+from models import RoleEnum
 from typing import Optional
 
-# Roles
-class RoleEnum(str, Enum):
-    admin = "admin"
-    teacher = "teacher"
-    student = "student"
+# Usuário 
 
-# User base
 class UserBase(BaseModel):
     name: str
-    email: EmailStr
+    email: str
     role: RoleEnum
 
-# User create
 class UserCreate(UserBase):
     password: str
 
-# User output
+class UserUpdate(BaseModel):
+    name: str | None = None
+    email: str | None = None
+    password: str | None = None
+    role: RoleEnum | None = None
+
 class UserOut(UserBase):
     id: int
-    school_id: Optional[int] = None
     is_active: bool
+    school_id: int
 
     class Config:
         orm_mode = True
 
-# User update
-class UserUpdate(BaseModel):
-    name: Optional[str] = None
-    email: Optional[EmailStr] = None
-    role: Optional[RoleEnum] = None
-    password: Optional[str] = None
+# Aluno
 
-# Student base
 class StudentBase(BaseModel):
     registration_number: str
-    course: Optional[str] = None
+    course: str | None = None
 
-# Student create
 class StudentCreate(StudentBase):
     user_id: int
 
-# Student update
-class StudentUpdate(BaseModel):
-    registration_number: Optional[str] = None
-    course: Optional[str] = None
+class StudentUpdate(StudentBase):
+    pass
 
-# Student output
 class StudentOut(StudentBase):
+    id: int
+    user_id: int
+
+    class Config:
+        orm_mode = True
+
+# Professor
+class TeacherBase(BaseModel):
+    subject: Optional[str] = None
+    hire_date: Optional[str] = None
+
+# Teacher create
+class TeacherCreate(TeacherBase):
+    user_id: int
+
+# Teacher update
+class TeacherUpdate(BaseModel):
+    subject: Optional[str] = None
+    hire_date: Optional[str] = None
+
+# Teacher output
+class TeacherOut(TeacherBase):
     id: int
     user_id: int
 
