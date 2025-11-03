@@ -24,7 +24,7 @@ def create_user(
 ):
     db_user = db.query(models.User).filter(models.User.email == user.email).first()
     if db_user:
-        raise HTTPException(status_code=400, detail="Email já registrado")
+        raise HTTPException(status_code = 400, detail = "Email já registrado")
     
     hashed_password = get_password_hash(user.password)
     # school_id está fixo em 1
@@ -82,7 +82,6 @@ def update_user(
     if not user:
         raise HTTPException(status_code=404, detail="Usuário não encontrado")
 
-    # for key, value in update_data.dict(exclude_unset=True).items():
     update_dict = update_data.dict(exclude_unset=True)
 
     if "password" in update_dict and update_dict["password"]:

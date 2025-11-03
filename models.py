@@ -52,3 +52,70 @@ class Teacher(Base):
     hire_date = Column(String, nullable = False)
 
     user = relationship("User")
+
+# Turma
+class Class(Base):
+    __tablename__ = "classes"
+
+    id = Column(Integer, primary_key = True, index = True)
+    name = Column(String, nullable = False)
+    school_id = Column(Integer, ForeignKey("schools.id", ondelete="CASCADE"), nullable=False)
+    teacher_id = Column(Integer, ForeignKey("teachers.id", ondelete="SET NULL"), nullable=False)
+    schedule = Column(String, nullable = True)
+
+    school = relationship("School")
+    teacher = relationship("Teacher")
+
+class ClassStudent(Base):
+    __tablename__ = "class_students"
+
+    id = Column(Integer, primary_key = True, index = True)
+    class_id = Column(Integer, ForeignKey ("classes.id", ondelete = "CASCADE"))
+    student_id = Column(Integer, ForeignKey ("students.id", ondelete = "CASCADE"))
+
+    class_ = relationship("Class", backref="enrollments")
+    student = relationship("Student", backref="enrollments")
+
+# Notas
+class Grade(Base):
+    __tablename__ = "grades"
+
+    id = Column(Integer, primary_key=True, index=True)
+    student_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    class_id = Column(Integer, ForeignKey("classes.id"), nullable=False)
+
+    grade_value = Column(Float, nullable=False)
+    description = Column(String, nullable=True)
+
+    # Relacionamentos
+    student = relationship("User", foreign_keys=[student_id])
+    class_ = relationship("Class")
+
+# Presenças
+class Attendance(Base):
+    __tablename__ = "attendance"
+
+    id = Column(Integer, primary_key=True, index=True)
+    student_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    class_id = Column(Integer, ForeignKey("classes.id"), nullable=False)
+    date = Column(Date, nullable=False)
+    status = Column(String, nullable=False)  # "present" ou "absent"
+
+    student = relationship("User", foreign_keys=[student_id])
+    class_ = relationship("Class")
+
+# Controle de presença
+class Attendance(Base):
+    __tablename__ = "attendance"
+
+    id = Column(Integer, primary_key=True, index=True)
+    student_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    class_id = Column(Integer, ForeignKey("classes.id"), nullable=False)
+
+    date = Column(Date, nullable=False)
+    status = Column(String, nullable=False, default="present")  # present, absent, late
+    comment = Column(String, nullable=True)
+
+    student = relationship("User", foreign_keys=[student_id])
+    class_ = relationship("Class")
+
