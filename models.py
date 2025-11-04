@@ -91,19 +91,6 @@ class Grade(Base):
     student = relationship("User", foreign_keys=[student_id])
     class_ = relationship("Class")
 
-# Presenças
-class Attendance(Base):
-    __tablename__ = "attendance"
-
-    id = Column(Integer, primary_key=True, index=True)
-    student_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    class_id = Column(Integer, ForeignKey("classes.id"), nullable=False)
-    date = Column(Date, nullable=False)
-    status = Column(String, nullable=False)  # "present" ou "absent"
-
-    student = relationship("User", foreign_keys=[student_id])
-    class_ = relationship("Class")
-
 # Controle de presença
 class Attendance(Base):
     __tablename__ = "attendance"
