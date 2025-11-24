@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel de Admin - Intelecta</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        :root { --sidebar-bg: #ffffff; --main-bg: #f0f4f8; --card-bg: #ffffff; --text-primary: #1e293b; --text-secondary: #64748b; --accent-blue: #3b82f6; --border-color: #e2e8f0; --active-bg: #f1f5f9; --hover-bg: #f8fafc; }
+        body { margin: 0; font-family: 'Inter', sans-serif; background-color: var(--main-bg); color: var(--text-primary); display: flex; height: 100vh; overflow: hidden; }
+        .sidebar { width: 250px; background-color: var(--sidebar-bg); padding: 20px; height: 100vh; display: flex; flex-direction: column; border-right: 1px solid var(--border-color); box-sizing: border-box; position: fixed; z-index: 100; }
+        .sidebar .logo { display: flex; align-items: center; margin-bottom: 30px; padding-left: 10px; }
+        .sidebar .logo-img { width: 40px; height: auto; }
+        .sidebar .logo h1 { font-size: 1.5rem; font-weight: 700; margin: 0 0 0 10px; color: var(--text-primary); }
+        .sidebar nav { flex-grow: 1; }
+        .sidebar nav ul { list-style: none; padding: 0; margin: 0; }
+        .sidebar nav a { display: flex; align-items: center; padding: 12px 10px; border-radius: 8px; text-decoration: none; color: var(--text-secondary); font-weight: 500; margin-bottom: 5px; }
+        .sidebar nav a i { width: 20px; margin-right: 15px; text-align: center; }
+        .sidebar nav a:hover { background-color: var(--hover-bg); color: var(--text-primary); }
+        .sidebar nav a.active { background-color: var(--active-bg); color: var(--accent-blue); font-weight: 600; }
+        .sidebar .logout { margin-top: auto; }
+        main { margin-left: 250px; width: calc(100% - 250px); height: 100vh; overflow-y: auto; padding: 40px; box-sizing: border-box; }
+        .header { margin-bottom: 30px; }
+        .header h1 { font-size: 2rem; font-weight: 700; }
+        .header p { font-size: 1.1rem; color: var(--text-secondary); margin-top: 5px; }
+        .content-card { background-color: var(--card-bg); padding: 30px; border-radius: 12px; box-shadow: 0 4px 6px -1px #0000001a, 0 2px 4px -2px #0000001a; }
+        .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .search-bar input { padding: 10px 15px; border-radius: 8px; border: 1px solid var(--border-color); width: 300px; }
+        .btn-primary { background-color: var(--accent-blue); color: white; padding: 10px 18px; border-radius: 8px; font-weight: 600; cursor: pointer; text-decoration: none; border: none; }
+        .user-table { width: 100%; border-collapse: collapse; }
+        .user-table th, .user-table td { padding: 15px; text-align: left; border-bottom: 1px solid var(--border-color); }
+        .actions button { background: none; border: none; cursor: pointer; color: var(--text-secondary); font-size: 1rem; padding: 5px; }
+        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 200; }
+        .modal-content { background: white; padding: 30px; border-radius: 12px; width: 400px; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; }
+        .form-group input, .form-group select { width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <aside class="sidebar">
+        <div class="logo"><img src="/front/img/logo.svg" alt="Logo"><h1>Intelecta</h1></div>
+        <nav><ul>
+            <li><a href="/front/principal.html"><i class="fas fa-home"></i> Principal</a></li>
+            <li><a href="/front/unidades.html"><i class="fas fa-book-open"></i> Unidades</a></li>
+            <li><a href="/front/atividades.html"><i class="fas fa-tasks"></i> Atividades</a></li>
+            <li><a href="/front/statistics.html"><i class="fas fa-chart-bar"></i> Estatísticas</a></li>
+            <li id="admin-panel-link" class="hidden"><a href="/front/admin.html" class="active"><i class="fas fa-user-shield"></i> Admin</a></li>
+        </ul></nav>
+        <div class="logout"><a href="#" id="logout-button"><i class="fas fa-sign-out-alt"></i> Sair</a></div>
+    </aside>
+    <main>
+        <header class="header"><h1>Gerenciamento de Usuários</h1><p>Adicione, edite ou remova usuários.</p></header>
+        <section class="content-card">
+            <div class="toolbar">
+                <input type="text" id="search-input" placeholder="Buscar por nome ou e-mail...">
+                <button class="btn-primary" id="add-user-btn">+ Adicionar Usuário</button>
+            </div>
+            <table class="user-table"><thead><tr><th>Nome</th><th>Email</th><th>Cargo</th><th>Ações</th></tr></thead><tbody id="user-table-body"></tbody></table>
+        </section>
+    </main>
+
+    <div id="user-modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header"><h2 id="modal-title">Adicionar Usuário</h2><button id="close-modal-btn">&times;</button></div>
+            <form id="user-form">
+                <input type="hidden" id="user-id">
+                <div class="form-group"><label for="name">Nome</label><input type="text" id="name" required></div>
+                <div class="form-group"><label for="email">Email</label><input type="email" id="email" required></div>
+                <div class="form-group"><label for="password">Senha (deixe em branco para não alterar)</label><input type="password" id="password"></div>
+                <div class="form-group"><label for="role">Cargo</label><select id="role"><option value="student">Aluno</option><option value="teacher">Professor</option><option value="admin">Admin</option></select></div>
+                <button type="submit" class="btn-primary">Salvar</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const token = localStorage.getItem('access_token');
+        if (!token) window.location.href = '/front/index.html';
+
+        const userTableBody = document.getElementById('user-table-body');
+        const searchInput = document.getElementById('search-input');
+        const addUserBtn = document.getElementById('add-user-btn');
+        const userModal = document.getElementById('user-modal');
+        const closeModalBtn = document.getElementById('close-modal-btn');
+        const userForm = document.getElementById('user-form');
+        const modalTitle = document.getElementById('modal-title');
+        const adminPanelLink = document.getElementById('admin-panel-link');
+
+        let users = [];
+
+        async function apiRequest(endpoint, method = 'GET', body = null) {
+            const options = { method, headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' } };
+            if (body) options.body = JSON.stringify(body);
+            const response = await fetch(endpoint, options);
+            if (response.status === 401) { localStorage.removeItem('access_token'); window.location.href = '/front/index.html'; }
+            if (!response.ok) throw new Error(`API request failed: ${method} ${endpoint}`);
+            return response.json();
+        }
+
+        async function checkAdminAndInit() {
+            try {
+                const user = await apiRequest('/users/me');
+                if (user.role !== 'admin') { window.location.href = '/front/principal.html'; return; }
+                adminPanelLink.classList.remove('hidden');
+                loadUsers();
+            } catch (error) { console.error('Initialization failed:', error); }
+        }
+
+        function renderTable(filteredUsers) {
+            userTableBody.innerHTML = filteredUsers.map(user => `
+                <tr>
+                    <td>${user.name}</td><td>${user.email}</td><td>${user.role}</td>
+                    <td class="actions">
+                        <button onclick="editUser(${user.id})"><i class="fas fa-edit"></i></button>
+                        <button onclick="deleteUser(${user.id})"><i class="fas fa-trash"></i></button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        async function loadUsers() {
+            try {
+                users = await apiRequest('/users/');
+                renderTable(users);
+            } catch (error) { console.error('Failed to load users:', error); }
+        }
+
+        searchInput.addEventListener('input', () => {
+            const searchTerm = searchInput.value.toLowerCase();
+            const filteredUsers = users.filter(u => u.name.toLowerCase().includes(searchTerm) || u.email.toLowerCase().includes(searchTerm));
+            renderTable(filteredUsers);
+        });
+
+        function openModal(user = null) {
+            userForm.reset();
+            if (user) {
+                modalTitle.textContent = 'Editar Usuário';
+                document.getElementById('user-id').value = user.id;
+                document.getElementById('name').value = user.name;
+                document.getElementById('email').value = user.email;
+                document.getElementById('role').value = user.role;
+            } else {
+                modalTitle.textContent = 'Adicionar Usuário';
+            }
+            userModal.classList.remove('hidden');
+        }
+
+        addUserBtn.addEventListener('click', () => openModal());
+        closeModalBtn.addEventListener('click', () => userModal.classList.add('hidden'));
+
+        window.editUser = (id) => openModal(users.find(u => u.id === id));
+        
+        window.deleteUser = async (id) => {
+            if (!confirm('Tem certeza que deseja excluir este usuário?')) return;
+            try {
+                await apiRequest(`/users/${id}`, 'DELETE');
+                loadUsers(); // Recarrega a lista
+            } catch (error) { console.error('Failed to delete user:', error); }
+        };
+
+        userForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('user-id').value;
+            const data = {
+                name: document.getElementById('name').value,
+                email: document.getElementById('email').value,
+                role: document.getElementById('role').value,
+            };
+            const password = document.getElementById('password').value;
+            if (password) data.password = password;
+
+            try {
+                if (id) {
+                    await apiRequest(`/users/${id}`, 'PUT', data);
+                } else {
+                    await apiRequest('/users/', 'POST', data);
+                }
+                userModal.classList.add('hidden');
+                loadUsers();
+            } catch (error) { console.error('Failed to save user:', error); }
+        });
+
+        document.getElementById('logout-button').addEventListener('click', e => {
+            e.preventDefault();
+            localStorage.removeItem('access_token');
+            window.location.href = '/front/index.html';
+        });
+
+        checkAdminAndInit();
+    </script>
+</body>
+</html>

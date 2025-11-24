@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estatísticas - Intelecta</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        :root {
+            --sidebar-bg: #ffffff; --main-bg: #f0f4f8; --card-bg: #ffffff; --text-primary: #1e293b; --text-secondary: #64748b; --accent-blue: #3b82f6; --border-color: #e2e8f0; --active-bg: #f1f5f9; --hover-bg: #f8fafc;
+            --highlight-green-bg: rgba(34, 197, 94, 0.6); --highlight-green-border: rgba(22, 163, 74, 1);
+            --default-blue-bg: rgba(59, 130, 246, 0.5); --default-blue-border: rgba(59, 130, 246, 1);
+        }
+        body { margin: 0; font-family: 'Inter', sans-serif; background-color: var(--main-bg); color: var(--text-primary); display: flex; height: 100vh; overflow: hidden; }
+        .sidebar { width: 250px; background-color: var(--sidebar-bg); padding: 20px; height: 100vh; display: flex; flex-direction: column; border-right: 1px solid var(--border-color); box-sizing: border-box; position: fixed; z-index: 100; }
+        .sidebar .logo { display: flex; align-items: center; margin-bottom: 30px; padding-left: 10px; }
+        .sidebar .logo-img { width: 40px; height: auto; }
+        .sidebar .logo h1 { font-size: 1.5rem; font-weight: 700; margin: 0 0 0 10px; color: var(--text-primary); }
+        .sidebar nav { flex-grow: 1; }
+        .sidebar nav ul { list-style: none; padding: 0; margin: 0; }
+        .sidebar nav a { display: flex; align-items: center; padding: 12px 10px; border-radius: 8px; text-decoration: none; color: var(--text-secondary); font-weight: 500; margin-bottom: 5px; transition: background-color 0.2s ease, color 0.2s ease; }
+        .sidebar nav a i { width: 20px; margin-right: 15px; text-align: center; }
+        .sidebar nav a:hover { background-color: var(--hover-bg); color: var(--text-primary); }
+        .sidebar nav a.active { background-color: var(--active-bg); color: var(--accent-blue); font-weight: 600; }
+        .sidebar .logout { margin-top: auto; }
+        main { margin-left: 250px; width: calc(100% - 250px); height: 100vh; overflow-y: auto; padding: 40px; box-sizing: border-box; }
+        .header { margin-bottom: 30px; }
+        .header h1 { font-size: 2rem; font-weight: 700; margin: 0; }
+        .header p { font-size: 1.1rem; color: var(--text-secondary); margin-top: 5px; }
+        .hidden { display: none; }
+        .filter-section { background-color: var(--card-bg); padding: 20px; border-radius: 12px; margin-bottom: 30px; box-shadow: 0 4px 6px -1px #0000001a, 0 2px 4px -2px #0000001a; display: flex; gap: 20px; align-items: center; }
+        .filter-group { display: flex; flex-direction: column; }
+        .filter-group label { font-size: .9rem; font-weight: 500; margin-bottom: 5px; color: var(--text-secondary); }
+        .filter-group select { padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); min-width: 200px; }
+        .chart-container { background-color: var(--card-bg); padding: 30px; border-radius: 12px; box-shadow: 0 4px 6px -1px #0000001a, 0 2px 4px -2px #0000001a; }
+        .chart-container h2 { margin-top: 0; font-size: 1.5rem; }
+    </style>
+</head>
+<body>
+    <aside class="sidebar">
+        <div class="logo"><img src="/front/img/logo.svg" alt="Logo Intelecta" class="logo-img"><h1>Intelecta</h1></div>
+        <nav><ul>
+            <li><a href="/front/principal.html"><i class="fas fa-home"></i> Principal</a></li>
+            <li><a href="/front/unidades.html"><i class="fas fa-book-open"></i> Unidades Curriculares</a></li>
+            <li><a href="/front/atividades.html"><i class="fas fa-tasks"></i> Atividades</a></li>
+            <li><a href="/front/statistics.html" class="active"><i class="fas fa-chart-bar"></i> Estatísticas</a></li>
+            <li id="admin-panel-link" class="hidden"><a href="/front/admin.html"><i class="fas fa-user-shield"></i> Painel de Admin</a></li>
+        </ul></nav>
+        <div class="logout"><a href="#" id="logout-button"><i class="fas fa-sign-out-alt"></i> Sair</a></div>
+    </aside>
+
+    <main>
+        <header class="header"><h1>Estatísticas de Desempenho</h1><p>Filtre e visualize o desempenho dos alunos nas atividades.</p></header>
+        <section class="filter-section">
+            <div class="filter-group"><label for="activity-filter">Filtrar por Atividade</label><select id="activity-filter"><option value="all">Selecione uma atividade</option></select></div>
+            <div class="filter-group"><label for="student-filter">Filtrar por Aluno</label><select id="student-filter"><option value="all">Todos os Alunos</option></select></div>
+        </section>
+        <section class="chart-container hidden"><h2>Distribuição de Notas</h2><canvas id="grades-chart"></canvas></section>
+    </main>
+
+    <script>
+        const token = localStorage.getItem('access_token');
+        if (!token) window.location.href = '/front/index.html';
+
+        const adminPanelLink = document.getElementById('admin-panel-link');
+        const activityFilter = document.getElementById('activity-filter');
+        const studentFilter = document.getElementById('student-filter');
+        const chartContainer = document.querySelector('.chart-container');
+        let activityGrades = []; // Cache para as notas da atividade selecionada
+
+        async function fetchAPI(url) {
+            const response = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+            if (response.status === 401) { localStorage.removeItem('access_token'); window.location.href = '/front/index.html'; }
+            if (!response.ok && response.status !== 404) throw new Error('Falha ao buscar dados da API');
+            return response.status === 404 ? [] : response.json();
+        }
+
+        async function checkAdmin() {
+            try {
+                const user = await fetchAPI('/users/me');
+                if (user.role === 'admin') {
+                    adminPanelLink.classList.remove('hidden');
+                }
+            } catch (error) {
+                console.error('Erro ao verificar permissão de admin:', error);
+            }
+        }
+
+        async function populateFilters() {
+            try {
+                const [activities, users] = await Promise.all([fetchAPI('/activities/'), fetchAPI('/users/')]);
+                activities.forEach(act => activityFilter.appendChild(new Option(act.title, act.id)));
+                users.filter(u => u.role === 'student').forEach(stu => studentFilter.appendChild(new Option(stu.name, stu.id)));
+            } catch (error) {
+                console.error("Erro ao popular filtros:", error);
+            }
+        }
+
+        function getGradeRangeIndex(value) {
+            if (value <= 2) return 0; if (value <= 4) return 1; if (value <= 6) return 2; if (value <= 8) return 3; return 4;
+        }
+
+        async function updateChart() {
+            const activityId = activityFilter.value;
+            const studentId = studentFilter.value;
+
+            if (activityId === 'all') {
+                chartContainer.classList.add('hidden');
+                return;
+            }
+
+            try {
+                // Busca as notas da atividade apenas se a atividade mudou
+                if (activityFilter.dataset.current !== activityId) {
+                    activityGrades = await fetchAPI(`/activities/${activityId}/grades`);
+                    activityFilter.dataset.current = activityId;
+                }
+                
+                chartContainer.classList.remove('hidden');
+
+                const gradeCounts = [0, 0, 0, 0, 0];
+                activityGrades.forEach(grade => gradeCounts[getGradeRangeIndex(grade.grade_value)]++);
+
+                const backgroundColors = Array(5).fill(getComputedStyle(document.documentElement).getPropertyValue('--default-blue-bg').trim());
+                const borderColors = Array(5).fill(getComputedStyle(document.documentElement).getPropertyValue('--default-blue-border').trim());
+
+                if (studentId !== 'all') {
+                    const studentGrade = activityGrades.find(g => g.student_id == parseInt(studentId));
+                    if (studentGrade) {
+                        const studentRangeIndex = getGradeRangeIndex(studentGrade.grade_value);
+                        backgroundColors[studentRangeIndex] = getComputedStyle(document.documentElement).getPropertyValue('--highlight-green-bg').trim();
+                        borderColors[studentRangeIndex] = getComputedStyle(document.documentElement).getPropertyValue('--highlight-green-border').trim();
+                    }
+                }
+
+                gradesChart.data.datasets[0].data = gradeCounts;
+                gradesChart.data.datasets[0].backgroundColor = backgroundColors;
+                gradesChart.data.datasets[0].borderColor = borderColors;
+                gradesChart.update();
+
+            } catch (error) {
+                console.error("Erro ao atualizar o gráfico:", error);
+            }
+        }
+
+        const ctx = document.getElementById('grades-chart').getContext('2d');
+        const gradesChart = new Chart(ctx, {
+            type: 'bar',
+            data: { labels: ['0-2', '3-4', '5-6', '7-8', '9-10'], datasets: [{ label: 'Número de Alunos', data: [], borderWidth: 1 }] },
+            options: { scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }, responsive: true, plugins: { legend: { display: false }, title: { display: true, text: 'Distribuição de notas na atividade selecionada' } } }
+        });
+
+        activityFilter.addEventListener('change', updateChart);
+        studentFilter.addEventListener('change', updateChart);
+        document.getElementById('logout-button').addEventListener('click', e => { e.preventDefault(); localStorage.removeItem('access_token'); window.location.href = '/front/index.html'; });
+
+        checkAdmin();
+        populateFilters();
+    </script>
+</body>
+</html>

@@ -20,7 +20,6 @@ def list_users(
 def create_user(
     user: schemas.UserCreate,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(require_role(["admin"]))
 ):
     db_user = db.query(models.User).filter(models.User.email == user.email).first()
     if db_user:

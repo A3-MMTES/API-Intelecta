@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conteúdo da Unidade - Intelecta</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/showdown/dist/showdown.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        :root {
+            --sidebar-bg: #ffffff; --main-bg: #f0f4f8; --card-bg: #ffffff; --text-primary: #1e293b; --text-secondary: #64748b; --accent-blue: #3b82f6; --border-color: #e2e8f0; --active-bg: #f1f5f9; --hover-bg: #f8fafc; --danger-color: #ef4444; --btn-secondary-bg: #e2e8f0;
+        }
+        body { margin: 0; font-family: 'Inter', sans-serif; background-color: var(--main-bg); color: var(--text-primary); display: flex; height: 100vh; overflow: hidden; }
+        .sidebar { width: 250px; background-color: var(--sidebar-bg); padding: 20px; height: 100vh; display: flex; flex-direction: column; border-right: 1px solid var(--border-color); box-sizing: border-box; position: fixed; z-index: 1000; }
+        .sidebar .logo { display: flex; align-items: center; margin-bottom: 30px; padding-left: 10px; }
+        .sidebar .logo-img { width: 40px; height: auto; }
+        .sidebar .logo h1 { font-size: 1.5rem; font-weight: 700; margin: 0 0 0 10px; }
+        .sidebar nav { flex-grow: 1; }
+        .sidebar nav ul { list-style: none; padding: 0; margin: 0; }
+        .sidebar nav a { display: flex; align-items: center; padding: 12px 10px; border-radius: 8px; text-decoration: none; color: var(--text-secondary); font-weight: 500; margin-bottom: 5px; }
+        .sidebar nav a i { width: 20px; margin-right: 15px; text-align: center; }
+        .sidebar nav a.active { background-color: var(--active-bg); color: var(--accent-blue); font-weight: 600; }
+        .sidebar .logout { margin-top: auto; }
+        .hidden { display: none !important; }
+        main { margin-left: 250px; width: calc(100% - 250px); height: 100vh; overflow-y: auto; padding: 40px; box-sizing: border-box; }
+        .loader { border: 5px solid var(--border-color); border-top: 5px solid var(--accent-blue); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 50px auto; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .content-header { margin-bottom: 30px; }
+        .content-header h1 { font-size: 2.2rem; margin: 0; }
+        .content-header p { font-size: 1.1rem; color: var(--text-secondary); margin-top: 10px; }
+        
+        #modules-container { max-width: 900px; margin: 0 auto; }
+        .content-module { background: var(--card-bg); border-radius: 12px; margin-bottom: 20px; padding: 25px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); position: relative; }
+        .content-module:hover .module-actions { opacity: 1; }
+        .module-content img { max-width: 100%; border-radius: 8px; }
+        .module-content a { color: var(--accent-blue); text-decoration: none; font-weight: 500; }
+        .module-content a:hover { text-decoration: underline; }
+        .module-content .link-preview { display: flex; align-items: center; background: var(--hover-bg); padding: 15px; border-radius: 8px; }
+        .module-content .link-preview i { font-size: 1.5rem; margin-right: 15px; color: var(--accent-blue); }
+
+        .module-actions { position: absolute; top: 15px; right: 15px; display: flex; gap: 8px; opacity: 0; transition: opacity 0.2s; }
+        .module-actions button { background: var(--btn-secondary-bg); border: 1px solid var(--border-color); color: var(--text-secondary); font-size: 0.9rem; cursor: pointer; padding: 5px 8px; border-radius: 6px; }
+        .module-actions button:hover { background: var(--border-color); color: var(--text-primary); }
+        .module-actions .delete-btn:hover { background: #fee2e2; color: var(--danger-color); }
+
+        .add-module-container { text-align: center; margin-top: 30px; padding: 20px; border-top: 1px dashed var(--border-color); }
+        .add-module-container h3 { margin: 0 0 15px; font-weight: 600; }
+        .add-module-buttons { display: flex; justify-content: center; gap: 15px; }
+        .btn { padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; border: none; text-decoration: none; display: inline-block; }
+        .btn-primary { background-color: var(--accent-blue); color: #fff; }
+        .btn-secondary { background-color: var(--btn-secondary-bg); color: var(--text-primary); }
+        
+        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 1100; }
+        .modal.show { display: flex; }
+        .modal-content { background: white; padding: 30px; border-radius: 12px; width: 90%; max-width: 700px; max-height: 90vh; overflow-y: auto; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { margin-bottom: 5px; display: block; font-weight: 500; }
+        .form-group input, .form-group textarea { width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px; box-sizing: border-box; }
+        .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <aside class="sidebar">
+        <div class="logo"><img src="/front/img/logo.svg" class="logo-img"><h1>Intelecta</h1></div>
+        <nav>
+            <ul>
+                <li><a href="/front/principal.html"><i class="fas fa-home"></i> Principal</a></li>
+                <li><a href="/front/unidades.html" class="active"><i class="fas fa-book-open"></i> Unidades</a></li>
+                <li><a href="/front/atividades.html"><i class="fas fa-tasks"></i> Atividades</a></li>
+                <li><a href="/front/statistics.html"><i class="fas fa-chart-bar"></i> Estatísticas</a></li>
+                <li id="admin-panel-link" class="hidden"><a href="/front/admin.html"><i class="fas fa-user-shield"></i> Admin</a></li>
+            </ul>
+        </nav>
+        <div class="logout"><a href="#" id="logout-button"><i class="fas fa-sign-out-alt"></i> Sair</a></div>
+    </aside>
+
+    <main>
+        <div id="main-content" class="hidden">
+            <div class="content-header">
+                <h1 id="unit-title"></h1>
+                <p id="unit-description"></p>
+            </div>
+            <div id="modules-container"></div>
+            <div id="add-module-container" class="add-module-container hidden">
+                <h3>Adicionar Novo Módulo</h3>
+                <div class="add-module-buttons">
+                    <button class="btn btn-secondary" onclick="openModuleModal('TEXT')"><i class="fas fa-paragraph"></i> Texto</button>
+                    <button class="btn btn-secondary" onclick="openModuleModal('IMAGE')"><i class="fas fa-image"></i> Imagem</button>
+                    <button class="btn btn-secondary" onclick="openModuleModal('LINK')"><i class="fas fa-link"></i> Link</button>
+                </div>
+            </div>
+        </div>
+        <div id="loader" class="loader"></div>
+    </main>
+
+    <div id="module-modal" class="modal">
+        <div class="modal-content">
+            <h2 id="modal-title">Adicionar Módulo</h2>
+            <form id="module-modal-form">
+                <input type="hidden" id="module-id">
+                <input type="hidden" id="module-type">
+                <div class="form-group">
+                    <label for="module-content" id="module-content-label">Conteúdo</label>
+                    <textarea id="module-content-text" rows="10" class="hidden"></textarea>
+                    <input type="url" id="module-content-url" class="hidden" placeholder="https://example.com">
+                </div>
+                <div class="modal-actions">
+                    <button type="button" id="close-modal-btn" class="btn btn-secondary">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+<script>
+    const token = localStorage.getItem('access_token');
+    if (!token) window.location.href = '/front/index.html';
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const unitId = urlParams.get('unit_id');
+    if (!unitId) window.location.href = '/front/unidades.html';
+    
+    const mainContent = document.getElementById('main-content');
+    const loader = document.getElementById('loader');
+    const adminPanelLink = document.getElementById('admin-panel-link');
+    const modulesContainer = document.getElementById('modules-container');
+    const addModuleContainer = document.getElementById('add-module-container');
+    const unitTitle = document.getElementById('unit-title');
+    const unitDescription = document.getElementById('unit-description');
+
+    const moduleModal = document.getElementById('module-modal');
+    const moduleModalForm = document.getElementById('module-modal-form');
+    const closeModalBtn = document.getElementById('close-modal-btn');
+
+    const markdownConverter = new showdown.Converter();
+    let currentUserRole = 'student';
+    let modules = [];
+
+    async function apiRequest(endpoint, method = 'GET', body = null) {
+        const options = { method, headers: { 'Authorization': `Bearer ${token}` } };
+        if (body) {
+            options.headers['Content-Type'] = 'application/json';
+            options.body = JSON.stringify(body);
+        }
+        const response = await fetch(endpoint, options);
+        if (response.status === 401) {
+            localStorage.removeItem('access_token');
+            window.location.href = '/front/index.html';
+        }
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({ detail: response.statusText }));
+            throw new Error(error.detail || 'API request failed');
+        }
+        if (response.status === 204 || response.headers.get('Content-Length') === '0') return null;
+        return response.json();
+    }
+
+    function renderModule(module) {
+        const moduleEl = document.createElement('div');
+        moduleEl.className = 'content-module';
+        moduleEl.dataset.moduleId = module.id;
+
+        let contentHtml = '';
+        switch (module.type) {
+            case 'TEXT':
+                contentHtml = markdownConverter.makeHtml(module.content);
+                break;
+            case 'IMAGE':
+                contentHtml = `<img src="${module.content}" alt="Imagem do conteúdo">`;
+                break;
+            case 'LINK':
+                contentHtml = `
+                    <a href="${module.content}" target="_blank" rel="noopener noreferrer">
+                        <div class="link-preview">
+                            <i class="fas fa-link"></i>
+                            <div>
+                                <strong>Acessar Link</strong><br>
+                                <span>${module.content}</span>
+                            </div>
+                        </div>
+                    </a>`;
+                break;
+        }
+
+        moduleEl.innerHTML = `<div class="module-content">${contentHtml}</div>`;
+
+        if (currentUserRole !== 'student') {
+            const actions = document.createElement('div');
+            actions.className = 'module-actions';
+            actions.innerHTML = `
+                <button title="Editar" class="edit-btn"><i class="fas fa-edit"></i></button>
+                <button title="Excluir" class="delete-btn"><i class="fas fa-trash"></i></button>
+            `;
+            actions.querySelector('.edit-btn').addEventListener('click', () => openModuleModal(module.type, module.id));
+            actions.querySelector('.delete-btn').addEventListener('click', () => deleteModule(module.id));
+            moduleEl.prepend(actions);
+        }
+        return moduleEl;
+    }
+
+    async function loadContent() {
+        try {
+            const unit = await apiRequest(`/units/${unitId}`);
+            unitTitle.textContent = unit.name;
+            unitDescription.textContent = unit.description;
+
+            modules = await apiRequest(`/contents/by_unit/${unitId}`);
+            modulesContainer.innerHTML = '';
+            if (modules.length > 0) {
+                modules.forEach(module => modulesContainer.appendChild(renderModule(module)));
+            } else if (currentUserRole !== 'student') {
+                modulesContainer.innerHTML = '<p style="text-align:center; color: var(--text-secondary);">Esta unidade ainda não tem conteúdo. Comece adicionando módulos abaixo.</p>';
+            }
+            
+            loader.classList.add('hidden');
+            mainContent.classList.remove('hidden');
+
+        } catch (error) {
+            console.error('Erro ao carregar conteúdo:', error);
+            loader.style.display = 'none';
+            mainContent.innerHTML = `<p>Não foi possível carregar o conteúdo. ${error.message}</p>`;
+            mainContent.classList.remove('hidden');
+        }
+    }
+
+    function openModuleModal(type, id = null) {
+        moduleModalForm.reset();
+        document.getElementById('module-id').value = '';
+        document.getElementById('module-type').value = type;
+        
+        const textInput = document.getElementById('module-content-text');
+        const urlInput = document.getElementById('module-content-url');
+        const label = document.getElementById('module-content-label');
+        
+        textInput.classList.add('hidden');
+        urlInput.classList.add('hidden');
+
+        if (type === 'TEXT') {
+            label.textContent = 'Conteúdo (Markdown)';
+            textInput.classList.remove('hidden');
+        } else if (type === 'IMAGE') {
+            label.textContent = 'URL da Imagem';
+            urlInput.classList.remove('hidden');
+            urlInput.type = 'url';
+        } else if (type === 'LINK') {
+            label.textContent = 'URL do Link';
+            urlInput.classList.remove('hidden');
+            urlInput.type = 'url';
+        }
+
+        if (id) {
+            document.getElementById('modal-title').textContent = 'Editar Módulo';
+            const module = modules.find(m => m.id === id);
+            if (module) {
+                document.getElementById('module-id').value = module.id;
+                if (type === 'TEXT') textInput.value = module.content;
+                else urlInput.value = module.content;
+            }
+        } else {
+            document.getElementById('modal-title').textContent = `Adicionar Módulo de ${type}`;
+        }
+        moduleModal.classList.add('show');
+    }
+
+    closeModalBtn.addEventListener('click', () => moduleModal.classList.remove('show'));
+
+    moduleModalForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const id = document.getElementById('module-id').value;
+        const type = document.getElementById('module-type').value;
+        
+        let content = '';
+        if (type === 'TEXT') content = document.getElementById('module-content-text').value;
+        else content = document.getElementById('module-content-url').value;
+
+        const data = { type, content };
+        let method, endpoint;
+
+        if (id) {
+            method = 'PUT';
+            endpoint = `/contents/${id}`;
+        } else {
+            method = 'POST';
+            endpoint = '/contents/';
+            data.unit_id = parseInt(unitId);
+            data.order = modules.length; // Adiciona no final
+        }
+
+        try {
+            await apiRequest(endpoint, method, data);
+            moduleModal.classList.remove('show');
+            loadContent();
+        } catch (error) {
+            alert(`Falha ao salvar o módulo: ${error.message}`);
+        }
+    });
+
+    async function deleteModule(id) {
+        if (!confirm('Tem certeza que deseja excluir este módulo de conteúdo?')) return;
+        try {
+            await apiRequest(`/contents/${id}`, 'DELETE');
+            loadContent();
+        } catch (error) {
+            alert(`Falha ao excluir o módulo: ${error.message}`);
+        }
+    }
+
+    document.getElementById('logout-button').addEventListener('click', e => {
+        e.preventDefault();
+        localStorage.removeItem('access_token');
+        window.location.href = '/front/index.html';
+    });
+
+    async function initialize() {
+        const user = await apiRequest('/users/me');
+        currentUserRole = user.role;
+        if (user.role === 'admin') adminPanelLink.classList.remove('hidden');
+        if (currentUserRole !== 'student') addModuleContainer.classList.remove('hidden');
+        loadContent();
+    }
+
+    initialize();
+</script>
+</body>
+</html>

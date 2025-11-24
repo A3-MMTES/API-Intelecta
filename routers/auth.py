@@ -1,51 +1,51 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
-from datetime import datetime, timedelta
-from jose import JWTError, jwt
 
 import models, schemas
 from database import get_db
-from utils.security import verify_password, get_password_hash
+from utils.security import verify_password, create_access_token, get_password_hash
+from auth_utils import get_current_user
 
 router = APIRouter()
 
-SECRET_KEY = "the_sound_of_the_waves_collide"
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
-def create_access_token(data:dict, expires_delta:timedelta | None = None):
-    to_encode = data.copy()
-    expire = datetime.utcnow() + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
-    to_encode.update({"exp": expire})
-    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-
-def verify_access_token(token: str):
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        return payload
-    except JWTError:
-        return None
-    
-@router.post("/login")
-def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+@router.post("/token")
+def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     user = db.query(models.User).filter(models.User.email == form_data.username).first()
     if not user or not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Credenciais inválidas",
+            detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-
-    token_data = {"sub": str(user.id), "role": user.role}
-    access_token = create_access_token(data=token_data)
-
+    access_token = create_access_token(
+        data={"sub": str(user.id), "role": user.role.value}
+    )
     return {"access_token": access_token, "token_type": "bearer"}
 
-# @router.post("/logout")
-# async def logout():
-#     return {"message": "logout"}
+@router.post("/register", response_model=schemas.UserOut, status_code=status.HTTP_201_CREATED)
+def register_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
+    db_user = db.query(models.User).filter(models.User.email == user.email).first()
+    if db_user:
+        raise HTTPException(status_code=400, detail="Email already registered")
+    
+    hashed_password = get_password_hash(user.password)
+    
+    # A escola padrão é criada no startup. Aqui, apenas verificamos se ela existe.
+    default_school = db.query(models.School).filter(models.School.id == 1).first()
+    if not default_school:
+        # Em um ambiente de produção, seria bom logar este erro.
+        raise HTTPException(status_code=500, detail="Default school not found.")
 
-# @router.post("/register") # admin
-# async def register():
-#     return {"message": "register"}
+    new_user = models.User(
+        name=user.name,
+        email=user.email,
+        hashed_password=hashed_password,
+        role=user.role, 
+        school_id=default_school.id
+    )
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    return new_user

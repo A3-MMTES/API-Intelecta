@@ -16,7 +16,7 @@ from argparse import (
     _SubParsersAction,
 )
 from collections import defaultdict
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from enum import Enum
 from functools import cached_property
 from textwrap import dedent
@@ -25,13 +25,13 @@ from typing import (
     TYPE_CHECKING,
     Annotated,
     Any,
-    Callable,
     Generic,
+    Literal,
     NoReturn,
-    Optional,
     TypeVar,
-    Union,
     cast,
+    get_args,
+    get_origin,
     overload,
 )
 
@@ -42,7 +42,6 @@ from pydantic._internal._utils import is_model_class
 from pydantic.dataclasses import is_pydantic_dataclass
 from pydantic.fields import FieldInfo
 from pydantic_core import PydanticUndefined
-from typing_extensions import get_args, get_origin
 from typing_inspection import typing_objects
 from typing_inspection.introspection import is_union_origin
 
@@ -94,21 +93,21 @@ class _CliArg(BaseModel):
     arg_prefix: str
     case_sensitive: bool
     hide_none_type: bool
-    kebab_case: bool
-    enable_decoding: Optional[bool]
+    kebab_case: bool | Literal['all', 'no_enums'] | None
+    enable_decoding: bool | None
     env_prefix_len: int
     args: list[str] = []
     kwargs: dict[str, Any] = {}
 
     _alias_names: tuple[str, ...] = PrivateAttr(())
-    _alias_paths: dict[str, Optional[int]] = PrivateAttr({})
+    _alias_paths: dict[str, int | None] = PrivateAttr({})
     _is_alias_path_only: bool = PrivateAttr(False)
     _field_info: FieldInfo = PrivateAttr()
 
     def __init__(
         self,
         field_info: FieldInfo,
-        parser_map: defaultdict[str | FieldInfo, dict[Optional[int] | str, _CliArg]],
+        parser_map: defaultdict[str | FieldInfo, dict[int | None | str, _CliArg]],
         **values: Any,
     ) -> None:
         super().__init__(**values)
@@ -131,8 +130,20 @@ class _CliArg(BaseModel):
             parser_map[self.field_info][index] = parser_map[alias_path_dest][index]
 
     @classmethod
-    def get_kebab_case(cls, name: str, kebab_case: Optional[bool]) -> str:
-        return name.replace('_', '-') if kebab_case else name
+    def get_kebab_case(cls, name: str, kebab_case: bool | Literal['all', 'no_enums'] | None) -> str:
+        return name.replace('_', '-') if kebab_case not in (None, False) else name
+
+    @classmethod
+    def get_enum_names(
+        cls, annotation: type[Any], kebab_case: bool | Literal['all', 'no_enums'] | None
+    ) -> tuple[str, ...]:
+        enum_names: tuple[str, ...] = ()
+        annotation = _strip_annotated(annotation)
+        for type_ in get_args(annotation):
+            enum_names += cls.get_enum_names(type_, kebab_case)
+        if annotation and _lenient_issubclass(annotation, Enum):
+            enum_names += tuple(cls.get_kebab_case(val.name, kebab_case == 'all') for val in annotation)
+        return enum_names
 
     def subcommand_alias(self, sub_model: type[BaseModel]) -> str:
         return self.get_kebab_case(
@@ -144,7 +155,7 @@ class _CliArg(BaseModel):
         return self._field_info
 
     @cached_property
-    def subcommand_dest(self) -> Optional[str]:
+    def subcommand_dest(self) -> str | None:
         return f'{self.arg_prefix}:subcommand' if _CliSubCommand in self.field_info.metadata else None
 
     @cached_property
@@ -193,7 +204,7 @@ class _CliArg(BaseModel):
         return self._alias_names
 
     @cached_property
-    def alias_paths(self) -> dict[str, Optional[int]]:
+    def alias_paths(self) -> dict[str, int | None]:
         return self._alias_paths
 
     @cached_property
@@ -223,7 +234,7 @@ class _CliArg(BaseModel):
 
 
 T = TypeVar('T')
-CliSubCommand = Annotated[Union[T, None], _CliSubCommand]
+CliSubCommand = Annotated[T | None, _CliSubCommand]
 CliPositionalArg = Annotated[T, _CliPositionalArg]
 _CliBoolFlag = TypeVar('_CliBoolFlag', bound=bool)
 CliImplicitFlag = Annotated[_CliBoolFlag, _CliImplicitFlag]
@@ -294,7 +305,7 @@ class CliSettingsSource(EnvSettingsSource, Generic[T]):
         cli_flag_prefix_char: str | None = None,
         cli_implicit_flags: bool | None = None,
         cli_ignore_unknown_args: bool | None = None,
-        cli_kebab_case: bool | None = None,
+        cli_kebab_case: bool | Literal['all', 'no_enums'] | None = None,
         cli_shortcuts: Mapping[str, str | list[str]] | None = None,
         case_sensitive: bool | None = True,
         root_parser: Any = None,
@@ -490,23 +501,7 @@ class CliSettingsSource(EnvSettingsSource, Generic[T]):
         if isinstance(parsed_args, (Namespace, SimpleNamespace)):
             parsed_args = vars(parsed_args)
 
-        selected_subcommands: list[str] = []
-        for field_name, val in list(parsed_args.items()):
-            if isinstance(val, list):
-                if self._is_nested_alias_path_only_workaround(parsed_args, field_name, val):
-                    # Workaround for nested alias path environment variables not being handled.
-                    # See https://github.com/pydantic/pydantic-settings/issues/670
-                    continue
-
-                cli_arg = self._parser_map.get(field_name, {}).get(None)
-                if cli_arg and cli_arg.is_no_decode:
-                    parsed_args[field_name] = ','.join(val)
-                    continue
-
-                parsed_args[field_name] = self._merge_parsed_list(val, field_name)
-            elif field_name.endswith(':subcommand') and val is not None:
-                selected_subcommands.append(self._parser_map[field_name][val].dest)
-
+        selected_subcommands = self._resolve_parsed_args(parsed_args)
         for arg_dest, arg_map in self._parser_map.items():
             if isinstance(arg_dest, str) and arg_dest.endswith(':subcommand'):
                 for subcommand_dest in [arg.dest for arg in arg_map.values()]:
@@ -534,6 +529,37 @@ class CliSettingsSource(EnvSettingsSource, Generic[T]):
 
         return self
 
+    def _resolve_parsed_args(self, parsed_args: dict[str, list[str] | str]) -> list[str]:
+        selected_subcommands: list[str] = []
+        for field_name, val in list(parsed_args.items()):
+            if isinstance(val, list):
+                if self._is_nested_alias_path_only_workaround(parsed_args, field_name, val):
+                    # Workaround for nested alias path environment variables not being handled.
+                    # See https://github.com/pydantic/pydantic-settings/issues/670
+                    continue
+
+                cli_arg = self._parser_map.get(field_name, {}).get(None)
+                if cli_arg and cli_arg.is_no_decode:
+                    parsed_args[field_name] = ','.join(val)
+                    continue
+
+                parsed_args[field_name] = self._merge_parsed_list(val, field_name)
+            elif field_name.endswith(':subcommand') and val is not None:
+                selected_subcommands.append(self._parser_map[field_name][val].dest)
+            elif self.cli_kebab_case == 'all':
+                snake_val = val.replace('-', '_')
+                cli_arg = self._parser_map.get(field_name, {}).get(None)
+                if (
+                    cli_arg
+                    and cli_arg.field_info.annotation
+                    and (snake_val in cli_arg.get_enum_names(cli_arg.field_info.annotation, False))
+                ):
+                    if '_' in val:
+                        raise ValueError(f'Input should be kebab-case "{val.replace("_", "-")}", not "{val}"')
+                    parsed_args[field_name] = snake_val
+
+        return selected_subcommands
+
     def _is_nested_alias_path_only_workaround(
         self, parsed_args: dict[str, list[str] | str], field_name: str, val: list[str]
     ) -> bool:
@@ -557,9 +583,7 @@ class CliSettingsSource(EnvSettingsSource, Generic[T]):
             return True
         return False
 
-    def _get_merge_parsed_list_types(
-        self, parsed_list: list[str], field_name: str
-    ) -> tuple[Optional[type], Optional[type]]:
+    def _get_merge_parsed_list_types(self, parsed_list: list[str], field_name: str) -> tuple[type | None, type | None]:
         merge_type = self._cli_dict_args.get(field_name, list)
         if (
             merge_type is list
@@ -578,7 +602,7 @@ class CliSettingsSource(EnvSettingsSource, Generic[T]):
 
     def _merged_list_to_str(self, merged_list: list[str], field_name: str) -> str:
         decode_list: list[str] = []
-        is_use_decode: Optional[bool] = None
+        is_use_decode: bool | None = None
         cli_arg_map = self._parser_map.get(field_name, {})
         for index, item in enumerate(merged_list):
             cli_arg = cli_arg_map.get(index)
@@ -839,7 +863,7 @@ class CliSettingsSource(EnvSettingsSource, Generic[T]):
         self._add_subparsers = self._connect_parser_method(add_subparsers_method, 'add_subparsers_method')
         self._formatter_class = formatter_class
         self._cli_dict_args: dict[str, type[Any] | None] = {}
-        self._parser_map: defaultdict[str | FieldInfo, dict[Optional[int] | str, _CliArg]] = defaultdict(dict)
+        self._parser_map: defaultdict[str | FieldInfo, dict[int | None | str, _CliArg]] = defaultdict(dict)
         self._add_parser_args(
             parser=self.root_parser,
             model=self.settings_cls,
@@ -864,7 +888,7 @@ class CliSettingsSource(EnvSettingsSource, Generic[T]):
         is_model_suppressed: bool = False,
     ) -> ArgumentParser:
         subparsers: Any = None
-        alias_path_args: dict[str, Optional[int]] = {}
+        alias_path_args: dict[str, int | None] = {}
         # Ignore model default if the default is a model and not a subclass of the current model.
         model_default = (
             None
@@ -1131,7 +1155,7 @@ class CliSettingsSource(EnvSettingsSource, Generic[T]):
     def _add_parser_alias_paths(
         self,
         parser: Any,
-        alias_path_args: dict[str, Optional[int]],
+        alias_path_args: dict[str, int | None],
         added_args: list[str],
         arg_prefix: str,
         subcommand_prefix: str,
@@ -1198,7 +1222,9 @@ class CliSettingsSource(EnvSettingsSource, Generic[T]):
         elif typing_objects.is_literal(origin):
             return self._metavar_format_choices(list(map(str, self._get_modified_args(obj))))
         elif _lenient_issubclass(obj, Enum):
-            return self._metavar_format_choices([val.name for val in obj])
+            return self._metavar_format_choices(
+                [_CliArg.get_kebab_case(val.name, self.cli_kebab_case == 'all') for val in obj]
+            )
         elif isinstance(obj, _WithArgsTypes):
             return self._metavar_format_choices(
                 list(map(self._metavar_format_recurse, self._get_modified_args(obj))),
