@@ -2,7 +2,7 @@
 
 Este documento serve como guia completo para a suíte de testes automatizados do projeto **Intelecta**. O objetivo é garantir a qualidade, estabilidade e segurança da API, com uma cobertura de código mínima de **70%** aplicada em todo o projeto.
 
-## 🚀 Como Executar os Testes
+## Como Executar os Testes
 
 A maneira mais simples de rodar a suíte de testes completa e gerar o relatório de cobertura é utilizando o script `RUN_TESTS.sh`.
 
@@ -21,7 +21,7 @@ Para uma análise mais detalhada das linhas de código cobertas, abra o relatór
 open htmlcov/index.html
 ```
 
-## 🏗️ Estrutura dos Testes
+##  Estrutura dos Testes
 
 Os testes estão organizados no diretório `tests/` e seguem uma estrutura lógica que espelha a arquitetura da aplicação.
 
@@ -41,7 +41,7 @@ tests/
     └── test_roles.py        # Testes unitários para o controle de acesso (RBAC)
 ```
 
-## 🎯 Cobertura de Testes
+##  Cobertura de Testes
 
 A suíte de testes abrange as áreas mais críticas da aplicação, garantindo que a lógica de negócio, segurança e endpoints funcionem como esperado.
 
@@ -75,7 +75,7 @@ A suíte de testes abrange as áreas mais críticas da aplicação, garantindo q
     -   Criação, leitura, atualização e exclusão de recursos (ex: estudantes, turmas).
     -   Tratamento de erros e validações de entrada.
 
-## 🧰 Fixtures de Teste (`conftest.py`)
+##  Fixtures de Teste (`conftest.py`)
 
 Para facilitar a escrita de testes e evitar duplicação de código, a suíte utiliza um conjunto de *fixtures* reutilizáveis, disponíveis em `tests/conftest.py`.
 
@@ -84,7 +84,7 @@ Para facilitar a escrita de testes e evitar duplicação de código, a suíte ut
 -   `test_user`, `test_student`, `test_teacher`: Usuários pré-configurados com diferentes perfis para testes de autenticação e autorização.
 -   `auth_headers`: Cabeçalhos HTTP com um token de autenticação válido para acessar rotas protegidas.
 
-## ✨ Boas Práticas e Ferramentas
+## Boas Práticas e Ferramentas
 
 -   **Isolamento:** Cada teste é executado em uma transação de banco de dados separada que é revertida ao final, garantindo que não haja interferência entre eles.
 -   **Testes de Integração e Unitários:** A suíte combina testes unitários (para funções específicas) e de integração (para endpoints completos da API).
