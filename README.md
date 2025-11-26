@@ -79,6 +79,23 @@ Para rodar os testes, execute o script:
 ./RUN_TESTS.sh
 ```
 
+| Router                    | Statements | Miss | Cobertura | Status         | Prioridade   |
+|---------------------------|------------|------|-----------|----------------|--------------|
+| routers/dashboard.py      | 18         | 0    | 100%      | Completo    | -            |
+| routers/settings.py       | 0          | 0    | 100%      | Completo    | -            |
+| routers/reports.py        | 29         | 7    | 76%       | Muito Bom   | Baixa        |
+| routers/units.py          | 44         | 16   | 64%       | Bom         | Média        |
+| routers/classes.py         | 45         | 17   | 62%       | Bom         | Média        |
+| routers/attendance.py     | 37         | 14   | 62%       | Bom         | Média        |
+| routers/auth.py           | 29         | 12   | 59%       | Razoável    | Média        |
+| routers/teachers.py       | 46         | 19   | 59%       | Razoável    | Média        |
+| routers/grades.py         | 53         | 22   | 58%       | Razoável    | Alta         |
+| routers/students.py       | 45         | 19   | 58%       | Razoável    | Alta         |
+| routers/users.py          | 54         | 25   | 54%       | Razoável    | Alta         |
+| routers/activities.py     | 66         | 32   | 52%       | Razoável    | Alta         |
+| routers/enrollments.py    | 34         | 19   | 44%       | Baixo       | Alta         |
+| routers/contents.py       | 44         | 28   | 36%       | Baixo       | Muito Alta   |
+
 ## Contribuidores
 
 - Amanda Fonseca Joaquim - RA: 42321095 - [GitHub](https://github.com/mandybang)
