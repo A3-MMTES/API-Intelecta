@@ -7,7 +7,7 @@ import warnings
 from argparse import Namespace
 from collections.abc import Mapping
 from types import SimpleNamespace
-from typing import Any, ClassVar, TypeVar
+from typing import Any, ClassVar, Literal, TypeVar
 
 from pydantic import ConfigDict
 from pydantic._internal._config import config_keys
@@ -35,6 +35,7 @@ from .sources import (
     YamlConfigSettingsSource,
     get_subcommand,
 )
+from .sources.utils import _get_alias_names
 
 T = TypeVar('T')
 
@@ -62,7 +63,7 @@ class SettingsConfigDict(ConfigDict, total=False):
     cli_flag_prefix_char: str
     cli_implicit_flags: bool | None
     cli_ignore_unknown_args: bool | None
-    cli_kebab_case: bool | None
+    cli_kebab_case: bool | Literal['all', 'no_enums'] | None
     cli_shortcuts: Mapping[str, str | list[str]] | None
     secrets_dir: PathType | None
     json_file: PathType | None
@@ -185,7 +186,7 @@ class BaseSettings(BaseModel):
         _cli_flag_prefix_char: str | None = None,
         _cli_implicit_flags: bool | None = None,
         _cli_ignore_unknown_args: bool | None = None,
-        _cli_kebab_case: bool | None = None,
+        _cli_kebab_case: bool | Literal['all', 'no_enums'] | None = None,
         _cli_shortcuts: Mapping[str, str | list[str]] | None = None,
         _secrets_dir: PathType | None = None,
         **values: Any,
@@ -272,7 +273,7 @@ class BaseSettings(BaseModel):
         _cli_flag_prefix_char: str | None = None,
         _cli_implicit_flags: bool | None = None,
         _cli_ignore_unknown_args: bool | None = None,
-        _cli_kebab_case: bool | None = None,
+        _cli_kebab_case: bool | Literal['all', 'no_enums'] | None = None,
         _cli_shortcuts: Mapping[str, str | list[str]] | None = None,
         _secrets_dir: PathType | None = None,
     ) -> dict[str, Any]:
@@ -426,6 +427,7 @@ class BaseSettings(BaseModel):
 
         if sources:
             state: dict[str, Any] = {}
+            defaults: dict[str, Any] = {}
             states: dict[str, dict[str, Any]] = {}
             for source in sources:
                 if isinstance(source, PydanticBaseSettingsSource):
@@ -435,13 +437,42 @@ class BaseSettings(BaseModel):
                 source_name = source.__name__ if hasattr(source, '__name__') else type(source).__name__
                 source_state = source()
 
+                if isinstance(source, DefaultSettingsSource):
+                    defaults = source_state
+
                 states[source_name] = source_state
                 state = deep_update(source_state, state)
+
+            # Strip any default values not explicity set before returning final state
+            state = {key: val for key, val in state.items() if key not in defaults or defaults[key] != val}
+            self._settings_restore_init_kwarg_names(self.__class__, init_kwargs, state)
+
             return state
         else:
             # no one should mean to do this, but I think returning an empty dict is marginally preferable
             # to an informative error and much better than a confusing error
             return {}
+
+    @staticmethod
+    def _settings_restore_init_kwarg_names(
+        settings_cls: type[BaseSettings], init_kwargs: dict[str, Any], state: dict[str, Any]
+    ) -> None:
+        """
+        Restore the init_kwarg key names to the final merged state dictionary.
+        """
+        if init_kwargs and state:
+            state_kwarg_names = set(state.keys())
+            init_kwarg_names = set(init_kwargs.keys())
+            for field_name, field_info in settings_cls.model_fields.items():
+                alias_names, *_ = _get_alias_names(field_name, field_info)
+                matchable_names = set(alias_names)
+                include_name = settings_cls.model_config.get('populate_by_name', False)
+                if include_name:
+                    matchable_names.add(field_name)
+                init_kwarg_name = init_kwarg_names & matchable_names
+                state_kwarg_name = state_kwarg_names & matchable_names
+                if init_kwarg_name and state_kwarg_name:
+                    state[init_kwarg_name.pop()] = state.pop(state_kwarg_name.pop())
 
     @staticmethod
     def _settings_warn_unused_config_keys(sources: tuple[object, ...], model_config: SettingsConfigDict) -> None:

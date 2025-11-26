@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Atividades - Intelecta</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        :root {
+            --sidebar-bg: #ffffff; --main-bg: #f0f4f8; --card-bg: #ffffff;
+            --text-primary: #1e293b; --text-secondary: #64748b; --accent-blue: #3b82f6;
+            --border-color: #e2e8f0; --active-bg: #eff6ff; --hover-bg: #f8fafc;
+            --btn-secondary-bg: #e2e8f0; --correct-bg: #d1fae5; --correct-border: #10b981;
+            --incorrect-bg: #fee2e2; --incorrect-border: #dc2626; --danger-color: #ef4444;
+        }
+        body { margin: 0; font-family: 'Inter', sans-serif; background-color: var(--main-bg); color: var(--text-primary); display: flex; height: 100vh; overflow: hidden; }
+        .sidebar { width: 250px; background-color: var(--sidebar-bg); padding: 20px; height: 100vh; display: flex; flex-direction: column; border-right: 1px solid var(--border-color); box-sizing: border-box; position: fixed; z-index: 1000; }
+        .sidebar .logo { display: flex; align-items: center; margin-bottom: 30px; padding-left: 10px; }
+        .sidebar .logo-img { width: 40px; height: auto; }
+        .sidebar .logo h1 { font-size: 1.5rem; font-weight: 700; margin: 0 0 0 10px; color: var(--text-primary); }
+        .sidebar nav ul { list-style: none; padding: 0; margin: 0; }
+        .sidebar nav a { display: flex; align-items: center; padding: 12px 10px; border-radius: 8px; text-decoration: none; color: var(--text-secondary); font-weight: 500; margin-bottom: 5px; transition: all 0.2s; }
+        .sidebar nav a i { width: 20px; margin-right: 15px; text-align: center; }
+        .sidebar nav a:hover { background-color: var(--hover-bg); color: var(--text-primary); }
+        .sidebar nav a.active { background-color: var(--active-bg); color: var(--accent-blue); font-weight: 600; }
+        .sidebar .logout { margin-top: auto; }
+        .hidden { display: none !important; }
+
+        main { margin-left: 250px; width: calc(100% - 250px); height: 100vh; display: flex; padding: 0; }
+        .activities-list-container { width: 400px; min-width: 300px; height: 100%; border-right: 1px solid var(--border-color); background: var(--sidebar-bg); display: flex; flex-direction: column; }
+        .list-header { padding: 20px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; }
+        .list-header h2 { margin: 0; font-size: 1.3rem; }
+        .btn-add { background: none; border: none; color: var(--accent-blue); font-size: 1.8rem; cursor: pointer; transition: color 0.2s; }
+        .btn-add:hover { color: #2563eb; }
+        .activities-list { overflow-y: auto; flex-grow: 1; }
+
+        .activity-item { padding: 15px 20px; border-bottom: 1px solid var(--border-color); cursor: pointer; transition: background-color 0.2s; position: relative; }
+        .activity-item.selected { background-color: var(--active-bg); }
+        .activity-item:hover .crud-actions, .activity-item.selected .crud-actions { display: flex; }
+
+        .crud-actions { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); background: var(--hover-bg); border: 1px solid var(--border-color); border-radius: 5px; padding: 4px 8px; display: none; gap: 8px; align-items: center; }
+        .crud-actions button { background: none; border: none; cursor: pointer; padding: 6px; font-size: 1rem; color: var(--text-secondary); }
+        .crud-actions button:hover { color: var(--accent-blue); }
+
+        .activity-detail-container { flex-grow: 1; padding: 40px; overflow-y: auto; }
+        #activity-placeholder { text-align: center; padding-top: 100px; color: var(--text-secondary); }
+        #activity-placeholder i { font-size: 4rem; margin-bottom: 20px; display: block; }
+        .loader-container { text-align: center; padding-top: 150px; }
+        .loader { border: 5px solid var(--border-color); border-top: 5px solid var(--accent-blue); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; display: inline-block; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); align-items: flex-start; justify-content: center; z-index: 1100; display: none; padding-top: 5vh; }
+        .modal.show { display: flex !important; }
+        .modal-content { background: white; padding: 30px; border-radius: 12px; width: 90%; max-width: 800px; max-height: 90vh; overflow-y: auto; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { margin-bottom: 5px; display: block; }
+        .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px; box-sizing: border-box; }
+        .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+        .btn { padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; border: none; }
+        .btn-primary { background-color: var(--accent-blue); color: #fff; }
+        .btn-secondary { background-color: var(--btn-secondary-bg); color: #000; }
+        .btn-danger-text { background: none; border: none; color: var(--danger-color); cursor: pointer; font-size: 0.9rem; }
+
+        .question-card, .modal-question-card { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 20px; margin-bottom: 20px; }
+        .options-list { display: flex; flex-direction: column; gap: 12px; margin-top: 15px; }
+        .quiz-option { padding: 14px 18px; border: 1px solid #e2e8f0; border-radius: 10px; background: #fff; cursor: pointer; transition: all 0.25s ease; user-select: none; font-weight: 500; }
+        .quiz-option:hover { background: #f8fafc; border-color: #94a3b8; transform: translateY(-1px); }
+        .quiz-option.correct { background: var(--correct-bg) !important; border-color: var(--correct-border) !important; color: #064e3b; }
+        .quiz-option.incorrect { background: var(--incorrect-bg) !important; border-color: var(--incorrect-border) !important; color: #7f1d1d; }
+        .quiz-option.disabled { opacity: 0.65; cursor: not-allowed; pointer-events: none; }
+
+        .modal-question-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .modal-option-item { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+
+    <aside class="sidebar">
+        <div class="logo"><img src="/front/img/logo.svg" class="logo-img"><h1>Intelecta</h1></div>
+        <nav>
+            <ul>
+                <li><a href="/front/principal.html"><i class="fas fa-home"></i> Principal</a></li>
+                <li><a href="/front/unidades.html"><i class="fas fa-book-open"></i> Unidades</a></li>
+                <li><a class="active"><i class="fas fa-tasks"></i> Atividades</a></li>
+                <li><a href="/front/statistics.html"><i class="fas fa-chart-bar"></i> Estatísticas</a></li>
+                <li id="admin-panel-link" class="hidden"><a href="/front/admin.html"><i class="fas fa-user-shield"></i> Admin</a></li>
+            </ul>
+        </nav>
+        <div class="logout"><a href="#" id="logout-button"><i class="fas fa-sign-out-alt"></i> Sair</a></div>
+    </aside>
+
+    <main>
+        <div class="activities-list-container">
+            <div class="list-header">
+                <h2>Atividades</h2>
+                <button id="add-activity-btn" class="btn-add hidden"><i class="fas fa-plus-circle"></i></button>
+            </div>
+            <div id="activities-list" class="activities-list"></div>
+        </div>
+
+        <div class="activity-detail-container">
+            <div id="activity-placeholder">
+                <i class="fas fa-edit"></i>
+                <h2>Selecione uma atividade</h2>
+                <p>Escolha uma atividade na lista para ver detalhes.</p>
+            </div>
+            <div id="loader-container" class="loader-container hidden"><div class="loader"></div></div>
+            <div id="activity-content" class="hidden"></div>
+        </div>
+    </main>
+
+    <!-- Modal Unificado -->
+    <div id="activity-modal" class="modal">
+        <div class="modal-content">
+            <form id="activity-modal-form">
+                <input type="hidden" id="activity-id">
+                <h2 id="modal-title">Nova Atividade</h2>
+                <div class="form-group">
+                    <label for="title">Título</label>
+                    <input type="text" id="title" required>
+                </div>
+                <div class="form-group">
+                    <label for="description">Descrição</label>
+                    <textarea id="description" rows="2"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="unit_id">Unidade</label>
+                    <select id="unit_id" required></select>
+                </div>
+                <hr style="margin: 20px 0;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h3>Questões</h3>
+                    <button type="button" id="add-question-btn-modal" class="btn btn-secondary">Adicionar Questão</button>
+                </div>
+                <div id="questions-container-modal"></div>
+                <div class="modal-actions">
+                    <button type="button" id="close-modal-btn" class="btn btn-secondary">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar Atividade</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+<script>
+    const token = localStorage.getItem('access_token');
+    if (!token) window.location.href = '/front/index.html';
+
+    // Elementos
+    const addActivityBtn = document.getElementById('add-activity-btn');
+    const activityModal = document.getElementById('activity-modal');
+    const closeModalBtn = document.getElementById('close-modal-btn');
+    const unitSelect = document.getElementById('unit_id');
+    const questionsContainerModal = document.getElementById('questions-container-modal');
+    const activitiesList = document.getElementById('activities-list');
+    const activityContent = document.getElementById('activity-content');
+    const activityPlaceholder = document.getElementById('activity-placeholder');
+    const loaderContainer = document.getElementById('loader-container');
+
+    let unitsMap = new Map();
+    let activities = [];
+    let currentUserRole = 'student';
+    let currentUserId = null;
+    let currentActivity = null;
+    let questionCounter = 0;
+
+    // Lê ?unit_id=1 da URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const filterUnitId = urlParams.get('unit_id');
+
+    async function apiRequest(endpoint, method = 'GET', body = null) {
+        const options = { method, headers: { 'Authorization': `Bearer ${token}` } };
+        if (body) {
+            options.headers['Content-Type'] = 'application/json';
+            options.body = JSON.stringify(body);
+        }
+        const res = await fetch(endpoint, options);
+        if (res.status === 401) { localStorage.removeItem('access_token'); window.location.href = '/front/index.html'; }
+        if (!res.ok) throw new Error(`Erro ${res.status}: ${await res.text()}`);
+        return res.status === 204 ? null : res.json();
+    }
+
+    function renderActivities() {
+        activitiesList.innerHTML = '';
+        const filtered = filterUnitId ? activities.filter(a => a.unit_id === parseInt(filterUnitId)) : activities;
+        
+        if (filtered.length === 0) {
+            activitiesList.innerHTML = '<p style="padding:20px; color:var(--text-secondary);">Nenhuma atividade encontrada.</p>';
+            return;
+        }
+
+        filtered.forEach(act => {
+            const item = document.createElement('div');
+            item.className = 'activity-item';
+            item.dataset.activityId = act.id;
+            item.innerHTML = `<h3>${act.title}</h3><p>Unidade: ${unitsMap.get(act.unit_id) || 'N/A'}</p>`;
+            item.onclick = () => selectActivity(act.id, item);
+
+            if (currentUserRole !== 'student') {
+                const actions = document.createElement('div');
+                actions.className = 'crud-actions';
+                actions.innerHTML = `<button title="Editar"><i class="fas fa-edit"></i></button><button title="Excluir"><i class="fas fa-trash"></i></button>`;
+                actions.children[0].onclick = e => { e.stopPropagation(); openActivityModal(act); };
+                actions.children[1].onclick = e => { e.stopPropagation(); deleteActivity(act.id); };
+                item.appendChild(actions);
+            }
+            activitiesList.appendChild(item);
+        });
+    }
+
+    async function selectActivity(id, el) {
+        document.querySelectorAll('.activity-item.selected').forEach(i => i.classList.remove('selected'));
+        el?.classList.add('selected');
+        activityPlaceholder.classList.add('hidden');
+        activityContent.classList.add('hidden');
+        loaderContainer.classList.remove('hidden');
+
+        try {
+            const activity = await apiRequest(`/activities/${id}`);
+            currentActivity = activity;
+            renderActivityDetails(activity);
+            activityContent.classList.remove('hidden');
+        } catch (e) {
+            activityContent.innerHTML = `<p>Erro: ${e.message}</p>`;
+            activityContent.classList.remove('hidden');
+        } finally {
+            loaderContainer.classList.add('hidden');
+        }
+    }
+
+    function renderActivityDetails(activity) {
+        let html = `<h1>${activity.title}</h1><p>${activity.description || 'Sem descrição.'}</p><hr><h2>Questões</h2>`;
+
+        if (activity.questions?.length > 0) {
+            activity.questions.forEach((q, i) => {
+                const correctId = q.options.find(o => o.is_correct)?.id;
+                const userAnswer = q.answers?.find(a => a.student_id === currentUserId);
+
+                html += `<div class="question-card">
+                    <div><strong>${i + 1}. ${q.text}</strong></div>
+                    <div class="options-list">`;
+
+                q.options.forEach(opt => {
+                    let cls = 'quiz-option';
+                    if (currentUserRole === 'student' && userAnswer) {
+                        cls += ' disabled';
+                        if (opt.id === correctId) cls += ' correct';
+                        else if (userAnswer.option_id === opt.id) cls += ' incorrect';
+                    }
+                    html += `<div class="${cls}" data-qid="${q.id}" data-oid="${opt.id}">${opt.text}</div>`;
+                });
+                html += `</div></div>`;
+            });
+        } else {
+            html += '<p>Nenhuma questão ainda.</p>';
+        }
+
+        activityContent.innerHTML = html;
+
+        // Aluno responde
+        if (currentUserRole === 'student') {
+            document.querySelectorAll('.quiz-option:not(.disabled)').forEach(opt => {
+                opt.onclick = async () => {
+                    const qid = opt.dataset.qid;
+                    const oid = opt.dataset.oid;
+                    document.querySelectorAll(`[data-qid="${qid}"]`).forEach(o => o.classList.add('disabled'));
+                    try {
+                        await apiRequest(`/questions/${qid}/answers`, 'POST', { option_id: parseInt(oid) });
+                        selectActivity(currentActivity.id);
+                    } catch {
+                        alert('Erro ao enviar resposta');
+                        document.querySelectorAll(`[data-qid="${qid}"]`).forEach(o => o.classList.remove('disabled'));
+                    }
+                };
+            });
+        }
+    }
+
+    // Modal
+    addActivityBtn.onclick = () => openActivityModal();
+    closeModalBtn.onclick = () => activityModal.classList.remove('show');
+
+    function openActivityModal(activity = null) {
+        document.getElementById('activity-modal-form').reset();
+        document.getElementById('activity-id').value = '';
+        questionsContainerModal.innerHTML = '';
+        questionCounter = 0;
+
+        if (activity) {
+            document.getElementById('modal-title').textContent = 'Editar Atividade';
+            document.getElementById('activity-id').value = activity.id;
+            document.getElementById('title').value = activity.title;
+            document.getElementById('description').value = activity.description || '';
+            document.getElementById('unit_id').value = activity.unit_id;
+            activity.questions?.forEach(q => addQuestionField(q));
+        } else {
+            document.getElementById('modal-title').textContent = 'Nova Atividade';
+            addQuestionField();
+        }
+        activityModal.classList.add('show');
+    }
+
+    function addQuestionField(q = null) {
+        const id = `q_${questionCounter++}`;
+        const div = document.createElement('div');
+        div.className = 'modal-question-card';
+        div.id = id;
+        div.innerHTML = `
+            <div class="modal-question-header">
+                <label>Questão</label>
+                <button type="button" class="btn-danger-text remove-question-btn">Remover</button>
+            </div>
+            <input type="text" class="question-text" required value="${q?.text || ''}">
+            <div class="modal-options-container" style="margin-top:15px;"></div>
+            <button type="button" class="btn btn-secondary add-option-btn" style="margin-top:10px;font-size:0.9rem;padding:5px 10px;">+ Opção</button>
+        `;
+        questionsContainerModal.appendChild(div);
+        const container = div.querySelector('.modal-options-container');
+        if (q?.options?.length) q.options.forEach(o => addOptionField(container, id, o));
+        else { addOptionField(container, id); addOptionField(container, id); }
+    }
+
+    function addOptionField(container, qid, opt = null) {
+        const idx = container.children.length;
+        const div = document.createElement('div');
+        div.className = 'modal-option-item';
+        div.innerHTML = `
+            <input type="text" class="option-text" required style="flex:1" value="${opt?.text || ''}">
+            <label><input type="radio" name="correct-${qid}" value="${idx}" ${opt?.is_correct ? 'checked' : ''}> Correta</label>
+            <button type="button" class="btn-danger-text remove-option-btn">×</button>
+        `;
+        container.appendChild(div);
+    }
+
+    questionsContainerModal.onclick = e => {
+        const t = e.target;
+        if (t.closest('.add-option-btn')) {
+            const card = t.closest('.modal-question-card');
+            addOptionField(card.querySelector('.modal-options-container'), card.id);
+        }
+        if (t.closest('.remove-question-btn')) t.closest('.modal-question-card').remove();
+        if (t.closest('.remove-option-btn')) t.closest('.modal-option-item').remove();
+    };
+
+    document.getElementById('activity-modal-form').onsubmit = async e => {
+        e.preventDefault();
+        const questions = [];
+        let valid = true;
+
+        document.querySelectorAll('.modal-question-card').forEach(card => {
+            const text = card.querySelector('.question-text').value.trim();
+            if (!text) return valid = false;
+            const options = [];
+            const correct = card.querySelector('input[type="radio"]:checked');
+            if (!correct) return valid = false;
+
+            card.querySelectorAll('.modal-option-item').forEach((item, i) => {
+                const txt = item.querySelector('.option-text').value.trim();
+                if (txt) options.push({ text: txt, is_correct: i === parseInt(correct.value) });
+            });
+            if (options.length < 2) valid = false;
+            else questions.push({ text, options });
+        });
+
+        if (!valid) return alert('Preencha todas as questões corretamente (mínimo 2 opções + 1 correta)');
+
+        const data = {
+            title: document.getElementById('title').value,
+            description: document.getElementById('description').value,
+            unit_id: parseInt(document.getElementById('unit_id').value),
+            questions
+        };
+
+        try {
+            const id = document.getElementById('activity-id').value;
+            const res = id 
+                ? await apiRequest(`/activities/${id}`, 'PUT', data)
+                : await apiRequest('/activities/', 'POST', data);
+            activityModal.classList.remove('show');
+            await initialize();
+            selectActivity(res.id);
+        } catch (err) {
+            alert('Erro ao salvar: ' + err.message);
+        }
+    };
+
+    async function deleteActivity(id) {
+        if (!confirm('Excluir atividade e todas as questões?')) return;
+        await apiRequest(`/activities/${id}`, 'DELETE');
+        activities = activities.filter(a => a.id !== id);
+        renderActivities();
+        if (currentActivity?.id === id) {
+            activityContent.innerHTML = '';
+            activityContent.classList.add('hidden');
+            activityPlaceholder.classList.remove('hidden');
+        }
+    }
+
+    async function initialize() {
+        const [user, units, acts] = await Promise.all([
+            apiRequest('/users/me'),
+            apiRequest('/units/'),
+            apiRequest('/activities/')
+        ]);
+
+        currentUserRole = user.role;
+        currentUserId = user.id;
+        if (user.role !== 'student') addActivityBtn.classList.remove('hidden');
+        if (user.role === 'admin') document.getElementById('admin-panel-link').classList.remove('hidden');
+
+        unitsMap.clear();
+        unitSelect.innerHTML = '<option value="" disabled selected>Selecione...</option>';
+        units.forEach(u => {
+            unitsMap.set(u.id, u.name);
+            unitSelect.add(new Option(u.name, u.id));
+        });
+
+        activities = acts;
+        renderActivities();
+    }
+
+    initialize();
+
+    document.getElementById('logout-button').onclick = e => {
+        e.preventDefault();
+        localStorage.removeItem('access_token');
+        window.location.href = '/front/index.html';
+    };
+</script>
+</body>
+</html>

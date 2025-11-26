@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unidades Curriculares - Intelecta</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        :root {
+            --sidebar-bg: #ffffff; --main-bg: #f0f4f8; --card-bg: #ffffff; --text-primary: #1e293b; --text-secondary: #64748b; --accent-blue: #3b82f6; --border-color: #e2e8f0; --active-bg: #f1f5f9; --hover-bg: #f8fafc; --btn-secondary-bg: #e2e8f0; --danger-color: #ef4444;
+        }
+        body { margin: 0; font-family: 'Inter', sans-serif; background-color: var(--main-bg); color: var(--text-primary); display: flex; height: 100vh; overflow: hidden; }
+        .sidebar { width: 250px; background-color: var(--sidebar-bg); padding: 20px; height: 100vh; display: flex; flex-direction: column; border-right: 1px solid var(--border-color); box-sizing: border-box; position: fixed; z-index: 1000; }
+        .sidebar .logo { display: flex; align-items: center; margin-bottom: 30px; padding-left: 10px; }
+        .sidebar .logo-img { width: 40px; height: auto; }
+        .sidebar .logo h1 { font-size: 1.5rem; font-weight: 700; margin: 0 0 0 10px; color: var(--text-primary); }
+        .sidebar nav { flex-grow: 1; }
+        .sidebar nav ul { list-style: none; padding: 0; margin: 0; }
+        .sidebar nav a { display: flex; align-items: center; padding: 12px 10px; border-radius: 8px; text-decoration: none; color: var(--text-secondary); font-weight: 500; margin-bottom: 5px; transition: background-color 0.2s, color 0.2s; }
+        .sidebar nav a i { width: 20px; margin-right: 15px; text-align: center; }
+        .sidebar nav a:hover { background-color: var(--hover-bg); color: var(--text-primary); }
+        .sidebar nav a.active { background-color: var(--active-bg); color: var(--accent-blue); font-weight: 600; }
+        .sidebar .logout { margin-top: auto; }
+        main { margin-left: 250px; width: calc(100% - 250px); height: 100vh; overflow-y: auto; padding: 40px; box-sizing: border-box; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+        .header h1 { font-size: 2rem; font-weight: 700; margin: 0; }
+        .hidden { display: none !important; }
+        .grid-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 25px; }
+        .unit-card { background-color: var(--card-bg); border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1); display: flex; flex-direction: column; position: relative; }
+        .unit-card-img { width: 100%; height: 150px; object-fit: cover; }
+        .unit-card-content { padding: 20px; flex-grow: 1; display: flex; flex-direction: column; }
+        .unit-card-content h2 { font-size: 1.3rem; margin: 0 0 10px 0; }
+        .unit-card-content p { font-size: 1rem; color: var(--text-secondary); margin: 0; flex-grow: 1; }
+        .unit-card-footer { padding: 15px 20px; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; }
+        .btn { padding: 8px 15px; border-radius: 8px; text-decoration: none; font-weight: 500; cursor: pointer; border: none; }
+        .btn-primary { background-color: var(--accent-blue); color: #fff; }
+        .btn-secondary { background-color: var(--btn-secondary-bg); color: var(--text-primary); }
+        .crud-actions { position: absolute; top: 10px; right: 10px; background: rgba(255,255,255,0.8); backdrop-filter: blur(5px); border-radius: 8px; padding: 5px; display: flex; gap: 5px; opacity: 0; transition: opacity 0.2s; }
+        .unit-card:hover .crud-actions { opacity: 1; }
+        .crud-actions button { background: none; border: none; color: var(--text-secondary); font-size: 1rem; cursor: pointer; padding: 5px; }
+        .crud-actions button:hover { color: var(--accent-blue); }
+        .crud-actions .delete-btn:hover { color: var(--danger-color); }
+
+        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 1100; }
+        .modal.show { display: flex; }
+        .modal-content { background: white; padding: 30px; border-radius: 12px; width: 90%; max-width: 500px; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { margin-bottom: 5px; display: block; font-weight: 500; }
+        .form-group input, .form-group textarea { width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px; box-sizing: border-box; }
+        .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <aside class="sidebar"> 
+        <div class="logo"><img src="/front/img/logo.svg" class="logo-img"><h1>Intelecta</h1></div>
+        <nav>
+            <ul>
+                <li><a href="/front/principal.html"><i class="fas fa-home"></i> Principal</a></li>
+                <li><a href="/front/unidades.html" class="active"><i class="fas fa-book-open"></i> Unidades</a></li>
+                <li><a href="/front/atividades.html"><i class="fas fa-tasks"></i> Atividades</a></li>
+                <li><a href="/front/statistics.html"><i class="fas fa-chart-bar"></i> Estatísticas</a></li>
+                <li id="admin-panel-link" class="hidden"><a href="/front/admin.html"><i class="fas fa-user-shield"></i> Admin</a></li>
+            </ul>
+        </nav>
+        <div class="logout"><a href="#" id="logout-button"><i class="fas fa-sign-out-alt"></i> Sair</a></div>
+    </aside>
+
+    <main>
+        <header class="header">
+            <div>
+                <h1>Unidades Curriculares</h1>
+                <p>Explore, crie e gerencie as unidades curriculares.</p>
+            </div>
+            <button id="add-unit-btn" class="btn btn-primary hidden">Adicionar Unidade</button>
+        </header>
+        <div class="grid-container" id="units-container"></div>
+    </main>
+
+    <div id="unit-modal" class="modal">
+        <div class="modal-content">
+            <h2 id="modal-title">Adicionar Unidade</h2>
+            <form id="unit-modal-form">
+                <input type="hidden" id="unit-id">
+                <div class="form-group">
+                    <label for="name">Nome</label>
+                    <input type="text" id="name" required>
+                </div>
+                <div class="form-group">
+                    <label for="description">Descrição Curta</label>
+                    <textarea id="description" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="imageUrl">URL da Imagem</label>
+                    <input type="text" id="imageUrl">
+                </div>
+                <div class="modal-actions">
+                    <button type="button" id="close-modal-btn" class="btn btn-secondary">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+<script>
+    const token = localStorage.getItem('access_token');
+    if (!token) window.location.href = '/front/index.html';
+
+    const unitsContainer = document.getElementById('units-container');
+    const adminPanelLink = document.getElementById('admin-panel-link');
+    const addUnitBtn = document.getElementById('add-unit-btn');
+    const unitModal = document.getElementById('unit-modal');
+    const unitModalForm = document.getElementById('unit-modal-form');
+    const closeModalBtn = document.getElementById('close-modal-btn');
+    
+    let units = [];
+    let currentUserRole = 'student';
+
+    async function apiRequest(endpoint, method = 'GET', body = null) {
+        const options = { method, headers: { 'Authorization': `Bearer ${token}` } };
+        if (body) {
+            options.headers['Content-Type'] = 'application/json';
+            options.body = JSON.stringify(body);
+        }
+        const response = await fetch(endpoint, options);
+        if (response.status === 401) {
+            localStorage.removeItem('access_token');
+            window.location.href = '/front/index.html';
+        }
+        if (!response.ok) throw new Error('API request failed: ' + response.statusText);
+        if (response.status === 204 || response.headers.get('Content-Length') === '0') return null;
+        return response.json();
+    }
+
+    function createUnitCard(unit) {
+        const card = document.createElement('div');
+        card.className = 'unit-card';
+        card.innerHTML = `
+            <img src="${unit.imageUrl || '/front/img/default-unit.jpg'}" alt="Imagem da Unidade" class="unit-card-img">
+            <div class="unit-card-content">
+                <h2>${unit.name}</h2>
+                <p>${unit.description || ''}</p>
+            </div>
+            <div class="unit-card-footer">
+                 <a href="/front/unidade_conteudo.html?unit_id=${unit.id}" class="btn btn-secondary">Acessar Conteúdo</a>
+                <a href="/front/atividades.html?unit_id=${unit.id}" class="btn btn-primary">Ver Atividades</a>
+            </div>
+        `;
+
+        if (currentUserRole !== 'student') {
+            const actions = document.createElement('div');
+            actions.className = 'crud-actions';
+            actions.innerHTML = `
+                <button title="Editar" class="edit-btn"><i class="fas fa-edit"></i></button>
+                <button title="Excluir" class="delete-btn"><i class="fas fa-trash"></i></button>
+            `;
+            actions.querySelector('.edit-btn').addEventListener('click', (e) => { e.stopPropagation(); openUnitModal(unit.id); });
+            actions.querySelector('.delete-btn').addEventListener('click', (e) => { e.stopPropagation(); deleteUnit(unit.id); });
+            card.prepend(actions);
+        }
+        return card;
+    }
+
+    async function loadUnits() {
+        try {
+            units = await apiRequest('/units/');
+            unitsContainer.innerHTML = '';
+            if (units.length === 0) {
+                unitsContainer.innerHTML = '<p>Nenhuma unidade curricular encontrada.</p>';
+                return;
+            }
+            units.forEach(unit => unitsContainer.appendChild(createUnitCard(unit)));
+        } catch (error) {
+            console.error('Error loading units:', error);
+            unitsContainer.innerHTML = '<p>Não foi possível carregar as unidades.</p>';
+        }
+    }
+
+    function openUnitModal(id = null) {
+        unitModalForm.reset();
+        document.getElementById('unit-id').value = '';
+        if (id) {
+            document.getElementById('modal-title').textContent = 'Editar Unidade';
+            const unit = units.find(u => u.id === id);
+            if (unit) {
+                document.getElementById('unit-id').value = unit.id;
+                document.getElementById('name').value = unit.name;
+                document.getElementById('description').value = unit.description || '';
+                document.getElementById('imageUrl').value = unit.imageUrl || '';
+            }
+        } else {
+            document.getElementById('modal-title').textContent = 'Adicionar Unidade';
+        }
+        unitModal.classList.add('show');
+    }
+    
+    closeModalBtn.addEventListener('click', () => unitModal.classList.remove('show'));
+    addUnitBtn.addEventListener('click', () => openUnitModal());
+
+    unitModalForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const id = document.getElementById('unit-id').value;
+        const data = {
+            name: document.getElementById('name').value,
+            description: document.getElementById('description').value,
+            imageUrl: document.getElementById('imageUrl').value
+        };
+        const method = id ? 'PUT' : 'POST';
+        const endpoint = id ? `/units/${id}` : '/units/';
+        try {
+            await apiRequest(endpoint, method, data);
+            unitModal.classList.remove('show');
+            loadUnits();
+        } catch (error) {
+            alert('Falha ao salvar a unidade. ' + error.message);
+        }
+    });
+
+    async function deleteUnit(id) {
+        if (!confirm('Tem certeza que deseja excluir esta unidade? Todas as atividades e conteúdos associados também serão removidos.')) return;
+        try {
+            await apiRequest(`/units/${id}`, 'DELETE');
+            loadUnits();
+        } catch (error) {
+            alert('Falha ao excluir a unidade. ' + error.message);
+        }
+    }
+
+    document.getElementById('logout-button').addEventListener('click', e => {
+        e.preventDefault();
+        localStorage.removeItem('access_token');
+        window.location.href = '/front/index.html';
+    });
+
+    async function initialize() {
+        const user = await apiRequest('/users/me');
+        currentUserRole = user.role;
+        if (user.role === 'admin') adminPanelLink.classList.remove('hidden');
+        if (currentUserRole !== 'student') addUnitBtn.classList.remove('hidden');
+        loadUnits();
+    }
+
+    initialize();
+</script>
+</body>
+</html>

@@ -1,8 +1,136 @@
-from pydantic import BaseModel
-from models import RoleEnum
-from typing import Optional
+from pydantic import BaseModel, ConfigDict
+from models import RoleEnum, ContentTypeEnum
+from typing import Optional, List
+from datetime import date
 
-# Usuário 
+# ======================================================
+# Módulo de Conteúdo (ContentModule)
+# ======================================================
+
+class ContentModuleBase(BaseModel):
+    type: ContentTypeEnum
+    content: str
+
+class ContentModuleCreate(ContentModuleBase):
+    unit_id: int
+    order: Optional[int] = 0
+
+class ContentModuleUpdate(BaseModel):
+    type: Optional[ContentTypeEnum] = None
+    content: Optional[str] = None
+    order: Optional[int] = None
+
+class ContentModule(ContentModuleBase):
+    id: int
+    unit_id: int
+    order: int
+    model_config = ConfigDict(from_attributes=True)
+
+# ======================================================
+# Respostas (Answers)
+# ======================================================
+class AnswerBase(BaseModel):
+    question_id: int
+    option_id: int
+
+class AnswerCreate(BaseModel):
+    option_id: int
+
+class Answer(AnswerBase):
+    id: int
+    student_id: int
+    model_config = ConfigDict(from_attributes=True)
+
+# ======================================================
+# Opções (para Questões)
+# ======================================================
+
+class OptionBase(BaseModel):
+    text: str
+    is_correct: bool
+
+class OptionCreate(OptionBase):
+    pass
+
+class OptionUpdate(BaseModel):
+    text: Optional[str] = None
+    is_correct: Optional[bool] = None
+
+class Option(OptionBase):
+    id: int
+    question_id: int
+    model_config = ConfigDict(from_attributes=True)
+
+# ======================================================
+# Questão
+# ======================================================
+
+class QuestionBase(BaseModel):
+    text: str
+
+class QuestionCreate(QuestionBase):
+    options: List[OptionCreate]
+
+class QuestionUpdate(BaseModel):
+    text: Optional[str] = None
+    options: Optional[List[OptionUpdate]] = None
+
+class Question(QuestionBase):
+    id: int
+    activity_id: int
+    options: List[Option] = []
+    answers: List[Answer] = []
+    model_config = ConfigDict(from_attributes=True)
+
+
+# ======================================================
+# Atividade
+# ======================================================
+
+class ActivityBase(BaseModel):
+    title: str
+    description: Optional[str] = None
+    unit_id: int
+
+class ActivityCreate(ActivityBase):
+    pass
+
+class ActivityUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    unit_id: Optional[int] = None
+
+class Activity(ActivityBase):
+    id: int
+    questions: List[Question] = []
+    model_config = ConfigDict(from_attributes=True)
+
+
+# ======================================================
+# Unidade (Unit)
+# ======================================================
+
+class UnitBase(BaseModel):
+    name: str
+    description: Optional[str] = None
+    imageUrl: Optional[str] = None
+
+class UnitCreate(UnitBase):
+    pass
+
+class UnitUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    imageUrl: Optional[str] = None
+
+class Unit(UnitBase):
+    id: int
+    content_modules: List[ContentModule] = []
+    model_config = ConfigDict(from_attributes=True)
+
+# ======================================================
+# Usuário
+# ======================================================
 
 class UserBase(BaseModel):
     name: str
@@ -13,87 +141,64 @@ class UserCreate(UserBase):
     password: str
 
 class UserUpdate(BaseModel):
-    name: str | None = None
-    email: str | None = None
-    password: str | None = None
-    role: RoleEnum | None = None
+    name: Optional[str] = None
+    email: Optional[str] = None
+    password: Optional[str] = None
+    role: Optional[RoleEnum] = None
 
 class UserOut(UserBase):
     id: int
     is_active: bool
     school_id: int
+    model_config = ConfigDict(from_attributes=True)
 
-    class Config:
-        orm_mode = True
 
+# ======================================================
 # Aluno
+# ======================================================
 
 class StudentBase(BaseModel):
     registration_number: str
-    course: str | None = None
+    course: Optional[str] = None
 
 class StudentCreate(StudentBase):
     user_id: int
 
-class StudentUpdate(StudentBase):
+class StudentUpdate(BaseModel):
     registration_number: Optional[str] = None
     course: Optional[str] = None
 
 class StudentOut(StudentBase):
     id: int
     user_id: int
+    model_config = ConfigDict(from_attributes=True)
 
-    class Config:
-        orm_mode = True
 
+# ======================================================
 # Professor
+# ======================================================
+
 class TeacherBase(BaseModel):
     subject: Optional[str] = None
-    hire_date: Optional[str] = None
+    hire_date: Optional[date] = None
 
-# create
 class TeacherCreate(TeacherBase):
     user_id: int
 
-# update
 class TeacherUpdate(BaseModel):
     subject: Optional[str] = None
-    hire_date: Optional[str] = None
+    hire_date: Optional[date] = None
 
-# output
 class TeacherOut(TeacherBase):
     id: int
     user_id: int
+    model_config = ConfigDict(from_attributes=True)
 
-    class Config:
-        orm_mode = True
 
-# Turmas 
-class ClassBase(BaseModel):
-    name:  str
-    schedule: Optional[str] = None
+# ======================================================
+# Turma
+# ======================================================
 
-# crate
-class ClassCreate(ClassBase):
-    teacher_id: int
-    school_id: Optional[int] = None
-
-# update
-class ClassUpdate(ClassBase):
-    name: Optional[str] = None
-    schedule: Optional[str] = None
-    teacher_id: Optional[int] = None
-
-# output
-class ClassOut(ClassBase):
-    id: int
-    teacher_id: int
-    school_id: Optional[int] = None 
-    
-    class Config:
-        orm_mode = True
-
-# turma
 class ClassBase(BaseModel):
     name: str
     schedule: Optional[str] = None
@@ -111,12 +216,12 @@ class ClassOut(ClassBase):
     id: int
     school_id: int
     teacher_id: Optional[int] = None
-
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
-# associação aluno x turma 
+# ======================================================
+# Matrícula (Enrollment)
+# ======================================================
 
 class EnrollmentBase(BaseModel):
     class_id: int
@@ -127,34 +232,36 @@ class EnrollmentCreate(EnrollmentBase):
 
 class EnrollmentOut(EnrollmentBase):
     id: int
+    model_config = ConfigDict(from_attributes=True)
 
-    class config:
-        orm_mode = True 
-        
+
+# ======================================================
 # Notas
+# ======================================================
+
 class GradeBase(BaseModel):
     grade_value: float
-    description: str | None = None
 
 class GradeCreate(GradeBase):
     student_id: int
-    class_id: int
+    activity_id: int # Corrigido: de class_id para activity_id
 
 class GradeUpdate(BaseModel):
-    grade_value: float | None = None
-    description: str | None = None
+    grade_value: Optional[float] = None
 
 class GradeOut(GradeBase):
     id: int
     student_id: int
-    class_id: int
+    activity_id: int # Corrigido: de class_id para activity_id
+    model_config = ConfigDict(from_attributes=True)
 
-    class Config:
-        orm_mode = True
 
+# ======================================================
 # Presenças
+# ======================================================
+
 class AttendanceBase(BaseModel):
-    date: str
+    date: date
     status: str
 
 class AttendanceCreate(AttendanceBase):
@@ -162,15 +269,32 @@ class AttendanceCreate(AttendanceBase):
     class_id: int
 
 class AttendanceUpdate(BaseModel):
-    status: str | None = None
+    status: Optional[str] = None
 
 class AttendanceOut(AttendanceBase):
     id: int
     student_id: int
     class_id: int
+    model_config = ConfigDict(from_attributes=True)
 
-    class Config:
-        orm_mode = True
+class ActivityBase(BaseModel):
+    title: str
+    description: Optional[str] = None
+    unit_id: int
 
-from datetime import date
 
+class ActivityCreate(ActivityBase):
+    questions: Optional[List[QuestionCreate]] = None   # AQUI!
+
+
+class ActivityUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    unit_id: Optional[int] = None
+    questions: Optional[List[QuestionCreate]] = None   # E AQUI!
+
+
+class Activity(ActivityBase):
+    id: int
+    questions: List[Question] = []
+    model_config = ConfigDict(from_attributes=True)

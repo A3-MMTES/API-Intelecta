@@ -7,7 +7,7 @@ import os
 from abc import ABC, abstractmethod
 from dataclasses import asdict, is_dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Optional, cast
+from typing import TYPE_CHECKING, Any, cast, get_args
 
 from pydantic import AliasChoices, AliasPath, BaseModel, TypeAdapter
 from pydantic._internal._typing_extra import (  # type: ignore[attr-defined]
@@ -15,7 +15,6 @@ from pydantic._internal._typing_extra import (  # type: ignore[attr-defined]
 )
 from pydantic._internal._utils import is_model_class
 from pydantic.fields import FieldInfo
-from typing_extensions import get_args
 from typing_inspection import typing_objects
 from typing_inspection.introspection import is_union_origin
 
@@ -36,7 +35,7 @@ if TYPE_CHECKING:
 
 def get_subcommand(
     model: PydanticModel, is_required: bool = True, cli_exit_on_error: bool | None = None
-) -> Optional[PydanticModel]:
+) -> PydanticModel | None:
     """
     Get the subcommand from a model.
 
@@ -265,12 +264,27 @@ class InitSettingsSource(PydanticBaseSettingsSource):
         init_kwarg_names = set(init_kwargs.keys())
         for field_name, field_info in settings_cls.model_fields.items():
             alias_names, *_ = _get_alias_names(field_name, field_info)
-            init_kwarg_name = init_kwarg_names & set(alias_names)
+            # When populate_by_name is True, allow using the field name as an input key,
+            # but normalize to the preferred alias to keep keys consistent across sources.
+            matchable_names = set(alias_names)
+            include_name = settings_cls.model_config.get('populate_by_name', False)
+            if include_name:
+                matchable_names.add(field_name)
+            init_kwarg_name = init_kwarg_names & matchable_names
             if init_kwarg_name:
-                preferred_alias = alias_names[0]
-                preferred_set_alias = next(alias for alias in alias_names if alias in init_kwarg_name)
+                preferred_alias = alias_names[0] if alias_names else field_name
+                # Choose provided key deterministically: prefer the first alias in alias_names order;
+                # fall back to field_name if allowed and provided.
+                provided_key = next((alias for alias in alias_names if alias in init_kwarg_names), None)
+                if provided_key is None and include_name and field_name in init_kwarg_names:
+                    provided_key = field_name
+                # provided_key should not be None here because init_kwarg_name is non-empty
+                assert provided_key is not None
                 init_kwarg_names -= init_kwarg_name
-                self.init_kwargs[preferred_alias] = init_kwargs[preferred_set_alias]
+                self.init_kwargs[preferred_alias] = init_kwargs[provided_key]
+        # Include any remaining init kwargs (e.g., extras) unchanged
+        # Note: If populate_by_name is True and the provided key is the field name, but
+        # no alias exists, we keep it as-is so it can be processed as extra if allowed.
         self.init_kwargs.update({key: val for key, val in init_kwargs.items() if key in init_kwarg_names})
 
         super().__init__(settings_cls)
