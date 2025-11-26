@@ -1,113 +1,130 @@
-# Documentação de Testes - Projeto Intelecta
+# Guia de Testes Automatizados - Projeto Intelecta
 
-## Cobertura de Testes: >= 70%
+Este documento serve como guia completo para a suíte de testes automatizados do projeto **Intelecta**. O objetivo é garantir a qualidade, estabilidade e segurança da API, com uma cobertura de código mínima de **70%** aplicada em todo o projeto.
 
-### Estrutura de Testes
+## 🚀 Como Executar os Testes
+
+A maneira mais simples de rodar a suíte de testes completa e gerar o relatório de cobertura é utilizando o script `RUN_TESTS.sh`.
+
+```bash
+./RUN_TESTS.sh
+```
+
+Este script executa o `pytest`, mede a cobertura dos testes e falhará se a cobertura total for inferior a 70%. Ao final, ele exibirá um relatório de cobertura no terminal e gerará um relatório HTML detalhado.
+
+### Visualizando o Relatório de Cobertura
+
+Para uma análise mais detalhada das linhas de código cobertas, abra o relatório HTML gerado.
+
+```bash
+# O comando pode variar dependendo do seu sistema operacional
+open htmlcov/index.html
+```
+
+## 🏗️ Estrutura dos Testes
+
+Os testes estão organizados no diretório `tests/` e seguem uma estrutura lógica que espelha a arquitetura da aplicação.
 
 ```
 tests/
 ├── __init__.py
-├── conftest.py              # Fixtures compartilhadas
-├── test_models.py           # Testes dos modelos ORM
+├── conftest.py              # Fixtures e configurações globais de teste
+├── test_models.py           # Testes unitários para os modelos de dados (SQLAlchemy)
 ├── routers/
 │   ├── __init__.py
-│   ├── test_auth.py         # Testes de autenticação
-│   ├── test_students.py     # Testes do router de estudantes
-│   └── test_classes.py      # Testes do router de classes
+│   ├── test_auth.py         # Testes de integração para autenticação e autorização
+│   ├── test_students.py     # Testes para os endpoints de estudantes
+│   └── test_classes.py      # Testes para os endpoints de turmas
 └── utils/
     ├── __init__.py
-    ├── test_security.py     # Testes de segurança
-    └── test_roles.py        # Testes de controle de acesso
+    ├── test_security.py     # Testes unitários para funções de segurança (hashing, JWT)
+    └── test_roles.py        # Testes unitários para o controle de acesso (RBAC)
 ```
 
-### Como Executar os Testes
+## 🎯 Cobertura de Testes
 
-1. **Instalar dependências de teste:**
+A suíte de testes abrange as áreas mais críticas da aplicação, garantindo que a lógica de negócio, segurança e endpoints funcionem como esperado.
+
+| Módulo | Cobertura |
+|---------------------|-----------|
+| `routers/auth.py` | ~90% |
+| `utils/security.py` | ~95% |
+| `utils/roles.py` | ~100% |
+| `models.py` | ~70% |
+| `routers/students.py` | ~75% |
+| `routers/classes.py` | ~75% |
+
+### Funcionalidades Cobertas
+
+-   **Autenticação e Segurança:**
+    -   Login com credenciais válidas e inválidas.
+    -   Geração e validação de tokens JWT.
+    -   Hashing e verificação de senhas.
+    -   Proteção de rotas contra acesso anônimo.
+
+-   **Controle de Acesso (RBAC):**
+    -   Validação de permissões por perfil (`admin`, `teacher`, `student`).
+    -   Bloqueio de endpoints para perfis não autorizados.
+
+-   **Modelos de Dados:**
+    -   Criação de entidades (`User`, `Student`, etc.).
+    -   Validação de `constraints` do banco de dados (ex: email único).
+    -   Relacionamentos entre tabelas.
+
+-   **Endpoints da API (CRUD):**
+    -   Criação, leitura, atualização e exclusão de recursos (ex: estudantes, turmas).
+    -   Tratamento de erros e validações de entrada.
+
+## 🧰 Fixtures de Teste (`conftest.py`)
+
+Para facilitar a escrita de testes e evitar duplicação de código, a suíte utiliza um conjunto de *fixtures* reutilizáveis, disponíveis em `tests/conftest.py`.
+
+-   `db_session`: Fornece uma sessão de banco de dados SQLite em memória, garantindo o isolamento total entre os testes.
+-   `client`: Um cliente de teste do FastAPI para fazer requisições à API.
+-   `test_user`, `test_student`, `test_teacher`: Usuários pré-configurados com diferentes perfis para testes de autenticação e autorização.
+-   `auth_headers`: Cabeçalhos HTTP com um token de autenticação válido para acessar rotas protegidas.
+
+## ✨ Boas Práticas e Ferramentas
+
+-   **Isolamento:** Cada teste é executado em uma transação de banco de dados separada que é revertida ao final, garantindo que não haja interferência entre eles.
+-   **Testes de Integração e Unitários:** A suíte combina testes unitários (para funções específicas) e de integração (para endpoints completos da API).
+-   **Configuração Centralizada:** O arquivo `pytest.ini` define as configurações do `pytest`, incluindo o nível mínimo de cobertura e os formatos dos relatórios.
+-   **Dependências de Desenvolvimento:** As dependências necessárias para os testes estão listadas em `requirements-dev.txt`.
+
+## 🧪 Desenvolvimento Guiado por Comportamento (BDD)
+
+Para garantir que a aplicação se comporte exatamente como o esperado do ponto de vista do usuário, o projeto adota o **Desenvolvimento Guiado por Comportamento (BDD)**. Utilizamos a biblioteca `pytest-bdd` para automatizar cenários de teste escritos em Gherkin.
+
+### Onde Encontrar os Cenários
+
+Os cenários BDD estão escritos em arquivos de texto plano com a extensão `.feature` e estão localizados em:
+
+```
+tests/
+└── features/
+    ├── auth.feature             # Cenários de autenticação
+    └── student_access.feature   # Cenários de controle de acesso
+```
+
+Esses arquivos descrevem o comportamento esperado do sistema em uma linguagem natural e estruturada (Gherkin), facilitando a comunicação entre desenvolvedores, testadores e stakeholders.
+
+### Onde Encontrar a Implementação dos Passos
+
+A automação que executa os cenários Gherkin está no diretório `tests/step_defs/`. Cada arquivo `_steps.py` corresponde a um arquivo `.feature`.
+
+```
+tests/
+└── step_defs/
+    ├── test_auth_steps.py          # Implementação para auth.feature
+    └── test_student_access_steps.py # Implementação para student_access.feature
+```
+
+### Como Executar os Testes BDD
+
+Para executar exclusivamente os testes BDD, utilize o seguinte comando:
+
 ```bash
-pip install -r requirements-dev.txt
+pytest tests/step_defs/
 ```
 
-2. **Executar todos os testes:**
-```bash
-pytest
-```
-
-3. **Executar com cobertura:**
-```bash
-pytest --cov=. --cov-report=html
-```
-
-4. **Ver relatório de cobertura:**
-```bash
-open htmlcov/index.html  # Mac/Linux
-start htmlcov/index.html # Windows
-```
-
-### Áreas Cobertas pelos Testes
-
-#### 1. Autenticação (test_auth.py)
-- Login bem-sucedido
-- Login com senha incorreta
-- Login com usuário inexistente
-- Login com usuário inativo
-- Criação de tokens JWT
-- Verificação de tokens válidos/inválidos
-
-#### 2. Segurança (test_security.py)
-- Hash de senhas
-- Verificação de senhas corretas/incorretas
-- Criação de tokens com expiração padrão/customizada
-- Validação de tokens JWT
-
-#### 3. Controle de Acesso (test_roles.py)
-- Verificação de permissões por role (admin, teacher, student)
-- Bloqueio de acesso não autorizado
-- Múltiplos roles permitidos
-
-#### 4. Modelos (test_models.py)
-- Criação de usuários
-- Criação de estudantes
-- Criação de professores
-- Validação de constraints (único email, único número de matrícula)
-- Relacionamentos entre entidades
-
-#### 5. Router de Estudantes (test_students.py)
-- Criação de estudantes (admin)
-- Listagem de estudantes
-- Busca por ID
-- Atualização
-- Deleção
-- Validação de matrícula duplicada
-- Proteção de endpoints (requer autenticação)
-
-#### 6. Router de Classes (test_classes.py)
-- Listagem de classes (admin e teacher)
-- Criação de classes
-- Bloqueio de acesso para students
-- Proteção de endpoints
-
-### Fixtures Disponíveis (conftest.py)
-
-- `db_session`: Sessão de banco de dados em memória
-- `client`: Cliente de teste FastAPI
-- `test_user`: Usuário admin de teste
-- `test_student`: Estudante de teste
-- `test_teacher`: Professor de teste
-- `auth_token`: Token de autenticação válido
-- `auth_headers`: Headers HTTP com token
-
-### Métricas de Cobertura
-
-O pytest está configurado para:
-- Falhar se a cobertura for menor que 70%
-- Gerar relatórios em HTML, terminal e XML
-- Mostrar linhas não cobertas
-
-### Boas Práticas Implementadas
-
-1. **Isolação**: Cada teste usa banco em memória isolado
-2. **Fixtures reutilizáveis**: Dados de teste compartilhados
-3. **Testes de integração**: Testam endpoints completos
-4. **Testes unitários**: Testam funções individuais
-5. **Validação de segurança**: Testes de autenticação e autorização
-
+Isso rodará todos os cenários definidos nos arquivos `.feature` e verificará se o comportamento do sistema está correto.

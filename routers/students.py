@@ -11,7 +11,7 @@ router = APIRouter()
 def create_student(
     student: schemas.StudentCreate,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(require_role(["admin"]))
+    current_user: models.User = Depends(require_role(["admin", "teacher"]))
 ):
     db_student = db.query(models.Student).filter(
         models.Student.registration_number == student.registration_number
@@ -26,10 +26,10 @@ def create_student(
     return new_student
 
 # listar alunos (admin)
-@router.get("/", response_model = list[schemas.StudentOut])
+@router.get("/", response_model=list[schemas.StudentOut])
 def list_students(
-    db: Session = Depends(get_db), 
-    current_user: models.User = Depends(require_role(["admin"]))
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_role(["admin", "teacher"]))
 ):
     return db.query(models.Student).all()
 
@@ -56,7 +56,7 @@ def update_student(
     student_id: int,
     update_data: schemas.StudentUpdate,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(require_role(["admin"]))
+    current_user: models.User = Depends(require_role(["admin", "teacher"]))
 ):
     student = db.query(models.Student).filter(models.Student.id == student_id).first()
     if not student:
@@ -74,7 +74,7 @@ def update_student(
 def delete_student(
      student_id: int,
      db: Session = Depends(get_db),
-     current_user: models.User = Depends(require_role(["admin"]))
+     current_user: models.User = Depends(require_role(["admin", "teacher"]))
 ):
     student = db.query(models.Student).filter(models.Student.id == student_id).first()
     if not student:
