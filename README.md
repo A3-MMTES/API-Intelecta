@@ -96,6 +96,20 @@ Para rodar os testes, execute o script:
 | routers/enrollments.py    | 34         | 19   | 44%       | Baixo       | Alta         |
 | routers/contents.py       | 44         | 28   | 36%       | Baixo       | Muito Alta   |
 
+| ID | Tipo de Teste | Descrição | Resultado Esperado | Resultado Obtido | Status (✓/X) | Observações |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| TST-01 | BDD | Login de usuário com sucesso | Retornar um token de acesso JWT válido | Status 200 - Token JWT retornado | ✓ | | 
+| TST-02 | BDD | Tentativa de login com credenciais inválidas | Retornar erro 401 Unauthorized | Status 401 - Unauthorized | ✓ | | 
+| TST-03 | Unitário | Criação de um novo usuário (aluno) | Retornar os dados do usuário criado com status 201 | Status 200 - Usuário criado | ✓ | O status code esperado era 201, mas a API retorna 200. O teste passou, mas o comportamento difere da expectativa inicial. | 
+| TST-04 | Unitário | Tentativa de criação de usuário com e-mail já existente | Retornar erro 400 Bad Request com a mensagem "Email already registered" | Status 400 - Email já registrado | ✓ | | 
+| TST-05 | Integração | Matricular um aluno em uma turma | Retornar os dados da matrícula criada | Status 200 - Matrícula criada | ✓ | | 
+| TST-06 | Integração | Lançar uma nota para um aluno em uma atividade | Retornar os dados da nota criada | Erro 422 | X | | 
+| TST-07 | BDD | Acessar endpoint protegido (e.g., /users) sem autenticação | Retornar erro 401 Unauthorized | Status 401 - Unauthorized | ✓ | | 
+| TST-08 | BDD | Acessar endpoint de admin (e.g., /users) com token de aluno | Retornar erro 403 Forbidden | Status 403 - Forbidden | ✓ | | 
+| TST-09 | Unitário | Criar uma nova turma | Retornar os dados da turma criada | Status 200 - Turma criada | ✓ | | 
+| TST-10 | Unitário | Criar uma nova atividade com questões | Retornar os dados da atividade e suas questões | Status 200 - Atividade com questões criada | ✓ | | 
+
+
 ## Contribuidores
 
 - Amanda Fonseca Joaquim - RA: 42321095 - [GitHub](https://github.com/mandybang)
